@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>El abandono en la natación</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    /* ── Custom properties ─────────────────────────────────── */
+    :root {
+      --color-deep:   #0077b6;
+      --color-mid:    #00b4d8;
+      --color-light:  #90e0ef;
+      --color-bg:     #f0f9ff;
+      --color-white:  #ffffff;
+      --color-text:   #0d1b2a;
+      --color-muted:  #5c7a93;
+      --color-border: #caf0f8;
+
+      --sidebar-width: 240px;
+      --mobile-header-h: 52px;
+
+      --font-display: 'Montserrat', sans-serif;
+      --font-body:    'Inter', sans-serif;
+
+      --section-gap: 4rem;
+      --content-max: 720px;
+
+      --transition: 0.25s ease;
+    }
+
+    /* ── Reset ──────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; font-size: 16px; }
+    body {
+      font-family: var(--font-body);
+      color: var(--color-text);
+      background: var(--color-bg);
+      line-height: 1.6;
+    }
+    a { color: inherit; text-decoration: none; }
+    ul { list-style: none; }
+
+    /* ── Mobile header (hidden on desktop) ──────────────────── */
+    .mobile-header {
+      display: none;
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      height: var(--mobile-header-h);
+      background: var(--color-deep);
+      color: var(--color-white);
+      padding: 0 1.25rem;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .mobile-header .site-title {
+      font-family: var(--font-display);
+      font-size: 0.95rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .nav-toggle {
+      background: none;
+      border: none;
+      color: var(--color-white);
+      font-size: 1.4rem;
+      cursor: pointer;
+      padding: 0.25rem 0.5rem;
+      line-height: 1;
+      border-radius: 4px;
+      transition: background var(--transition);
+    }
+    .nav-toggle:hover { background: rgba(255,255,255,0.15); }
+
+    /* ── Layout grid ────────────────────────────────────────── */
+    .layout {
+      display: grid;
+      grid-template-columns: var(--sidebar-width) 1fr;
+      min-height: 100vh;
+      align-items: start;
+    }
+
+    /* ── Sidebar ────────────────────────────────────────────── */
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      background: var(--color-white);
+      border-right: 1px solid var(--color-border);
+      padding: 2rem 1rem 2rem 1.25rem;
+    }
+    .sidebar-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .sidebar-logo-mark {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--color-deep), var(--color-mid));
+      flex-shrink: 0;
+    }
+    .sidebar-logo-text {
+      font-family: var(--font-display);
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--color-deep);
+      line-height: 1.2;
+    }
+    .sidebar-label {
+      font-family: var(--font-display);
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--color-muted);
+      margin-bottom: 0.75rem;
+    }
+    .nav-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .nav-link {
+      display: block;
+      padding: 0.45rem 0.75rem;
+      border-left: 3px solid transparent;
+      border-radius: 0 4px 4px 0;
+      font-size: 0.875rem;
+      font-weight: 400;
+      color: var(--color-text);
+      transition: color var(--transition), border-color var(--transition), background var(--transition);
+    }
+    .nav-link:hover {
+      color: var(--color-deep);
+      background: #e8f7fd;
+      border-left-color: var(--color-light);
+    }
+    .nav-link.active {
+      color: var(--color-deep);
+      font-weight: 600;
+      border-left-color: var(--color-deep);
+      background: #dff3fb;
+    }
+
+    /* ── Main content ───────────────────────────────────────── */
+    .content {
+      min-width: 0;
+    }
+
+    /* ── Hero ───────────────────────────────────────────────── */
+    .hero {
+      background: linear-gradient(135deg, var(--color-deep) 0%, var(--color-mid) 100%);
+      color: var(--color-white);
+      padding: 5rem 3rem 4.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Ccircle cx='30' cy='30' r='28' fill='none' stroke='rgba(255,255,255,0.05)' stroke-width='1'/%3E%3C/svg%3E") repeat;
+      pointer-events: none;
+    }
+    .hero-inner {
+      position: relative;
+      max-width: var(--content-max);
+    }
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--color-light);
+      margin-bottom: 1.25rem;
+    }
+    .hero-eyebrow::before {
+      content: '';
+      display: inline-block;
+      width: 20px;
+      height: 2px;
+      background: var(--color-light);
+      border-radius: 2px;
+    }
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: clamp(1.75rem, 4vw, 2.8rem);
+      font-weight: 700;
+      line-height: 1.18;
+      margin-bottom: 1.25rem;
+    }
+    .hero-subtitle {
+      font-size: 1.05rem;
+      font-weight: 400;
+      color: rgba(255,255,255,0.88);
+      max-width: 54ch;
+      line-height: 1.65;
+      margin-bottom: 2rem;
+    }
+    .hero-meta {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.65);
+    }
+    .hero-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .hero-wave {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      line-height: 0;
+    }
+    .hero-wave svg { display: block; }
+
+    /* ── Article ────────────────────────────────────────────── */
+    .article-section {
+      border-bottom: 1px solid var(--color-border);
+      padding: var(--section-gap) 3rem;
+    }
+    .article-section:last-child { border-bottom: none; }
+    .section-inner { max-width: var(--content-max); }
+    .section-tag {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--color-mid);
+      margin-bottom: 0.6rem;
+    }
+    .section-title {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--color-deep);
+      margin-bottom: 1.5rem;
+      padding-bottom: 0.6rem;
+      border-bottom: 2px solid var(--color-light);
+      line-height: 1.25;
+    }
+    .placeholder-text {
+      color: var(--color-muted);
+      font-style: italic;
+      line-height: 1.75;
+      margin-bottom: 0.9rem;
+    }
+    .placeholder-list {
+      list-style: none;
+      margin-top: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .placeholder-list li {
+      padding: 0.6rem 1rem;
+      background: var(--color-white);
+      border: 1px solid var(--color-border);
+      border-left: 3px solid var(--color-light);
+      border-radius: 0 4px 4px 0;
+      color: var(--color-muted);
+      font-style: italic;
+      font-size: 0.9rem;
+    }
+
+    /* ── Stat grid ──────────────────────────────────────────── */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin-top: 1.75rem;
+    }
+    .stat-card {
+      background: var(--color-white);
+      border: 1px solid var(--color-border);
+      border-top: 3px solid var(--color-mid);
+      border-radius: 6px;
+      padding: 1.25rem 1rem;
+      text-align: center;
+    }
+    .stat-number {
+      display: block;
+      font-family: var(--font-display);
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--color-deep);
+      line-height: 1;
+      margin-bottom: 0.4rem;
+    }
+    .stat-label {
+      display: block;
+      font-size: 0.78rem;
+      color: var(--color-muted);
+      line-height: 1.4;
+    }
+
+    /* ── Mobile overlay backdrop ────────────────────────────── */
+    .sidebar-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.35);
+      z-index: 99;
+      opacity: 0;
+      transition: opacity var(--transition);
+    }
+    .sidebar-backdrop.visible {
+      opacity: 1;
+    }
+
+    /* ── Responsive ─────────────────────────────────────────── */
+    @media (max-width: 767px) {
+      .mobile-header { display: flex; }
+
+      .layout { display: block; }
+
+      .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: var(--sidebar-width);
+        z-index: 100;
+        transform: translateX(-100%);
+        transition: transform var(--transition);
+        box-shadow: 4px 0 20px rgba(0,0,0,0.15);
+        padding-top: calc(var(--mobile-header-h) + 1.5rem);
+      }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-backdrop { display: block; }
+
+      .hero { padding: 3rem 1.25rem 3.5rem; }
+      .article-section { padding: 2.5rem 1.25rem; }
+    }
+
+    @media (max-width: 480px) {
+      .stat-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Mobile header -->
+  <header class="mobile-header">
+    <span class="site-title">Abandono en Natación</span>
+    <button class="nav-toggle" aria-label="Abrir menú de navegación" aria-expanded="false" aria-controls="sidebar">&#9776;</button>
+  </header>
+
+  <!-- Sidebar backdrop for mobile -->
+  <div class="sidebar-backdrop" id="sidebar-backdrop" aria-hidden="true"></div>
+
+  <div class="layout">
+
+    <!-- Lateral fixed navigation -->
+    <nav class="sidebar" id="sidebar" aria-label="Navegación de secciones">
+      <div class="sidebar-logo">
+        <div class="sidebar-logo-mark" aria-hidden="true"></div>
+        <span class="sidebar-logo-text">Abandono en Natación</span>
+      </div>
+      <p class="sidebar-label">Contenido</p>
+      <ul class="nav-list" role="list">
+        <li><a class="nav-link" href="#introduccion">Introducción</a></li>
+        <li><a class="nav-link" href="#el-problema">El problema</a></li>
+        <li><a class="nav-link" href="#factores-del-abandono">Factores del abandono</a></li>
+        <li><a class="nav-link" href="#datos-y-estadisticas">Datos y estadísticas</a></li>
+        <li><a class="nav-link" href="#estrategias-de-prevencion">Estrategias de prevención</a></li>
+        <li><a class="nav-link" href="#conclusiones">Conclusiones</a></li>
+      </ul>
+    </nav>
+
+    <!-- Main content -->
+    <main class="content" id="main-content">
+
+      <!-- Hero section -->
+      <section class="hero" id="hero" aria-label="Encabezado principal">
+        <div class="hero-inner">
+          <p class="hero-eyebrow">Investigación · Natación · Deporte</p>
+          <h1 class="hero-title">El abandono en la natación:<br>causas, datos y soluciones</h1>
+          <p class="hero-subtitle">[Placeholder: descripción introductoria del artículo. Un análisis en profundidad sobre por qué los nadadores dejan el deporte y cómo podemos retenerlos.]</p>
+          <div class="hero-meta">
+            <span class="hero-meta-item">&#128197; [Fecha]</span>
+            <span class="hero-meta-item">&#128196; [Autor]</span>
+            <span class="hero-meta-item">&#9201; [Tiempo de lectura]</span>
+          </div>
+        </div>
+        <div class="hero-wave" aria-hidden="true">
+          <svg viewBox="0 0 1440 48" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+            <path d="M0,32 C360,0 1080,64 1440,32 L1440,48 L0,48 Z" fill="#f0f9ff"/>
+          </svg>
+        </div>
+      </section>
+
+      <!-- Article sections -->
+      <article class="article">
+
+        <section id="introduccion" class="article-section">
+          <div class="section-inner">
+            <span class="section-tag">01 · Introducción</span>
+            <h2 class="section-title">Introducción</h2>
+            <p class="placeholder-text">[Placeholder: Contexto general sobre el fenómeno del abandono deportivo en la natación. Importancia del tema a nivel nacional e internacional.]</p>
+            <p class="placeholder-text">[Placeholder: Relevancia del artículo, preguntas que se pretenden responder y estructura general del documento.]</p>
+          </div>
+        </section>
+
+        <section id="el-problema" class="article-section">
+          <div class="section-inner">
+            <span class="section-tag">02 · El problema</span>
+            <h2 class="section-title">El problema</h2>
+            <p class="placeholder-text">[Placeholder: Descripción del fenómeno del abandono en el deporte de la natación: magnitud, tendencias y perfil de los afectados.]</p>
+            <p class="placeholder-text">[Placeholder: Impacto en clubes, federaciones, entrenadores y en el desarrollo deportivo a largo plazo.]</p>
+          </div>
+        </section>
+
+        <section id="factores-del-abandono" class="article-section">
+          <div class="section-inner">
+            <span class="section-tag">03 · Factores</span>
+            <h2 class="section-title">Factores del abandono</h2>
+            <p class="placeholder-text">[Placeholder: Análisis de los principales factores que contribuyen al abandono: motivacionales, sociales, físicos y organizativos.]</p>
+            <ul class="placeholder-list">
+              <li>[Placeholder: Factor 1 — descripción breve]</li>
+              <li>[Placeholder: Factor 2 — descripción breve]</li>
+              <li>[Placeholder: Factor 3 — descripción breve]</li>
+              <li>[Placeholder: Factor 4 — descripción breve]</li>
+            </ul>
+          </div>
+        </section>
+
+        <section id="datos-y-estadisticas" class="article-section">
+          <div class="section-inner">
+            <span class="section-tag">04 · Datos</span>
+            <h2 class="section-title">Datos y estadísticas</h2>
+            <p class="placeholder-text">[Placeholder: Estadísticas nacionales e internacionales sobre tasas de abandono en natación por edad, género y nivel competitivo.]</p>
+            <div class="stat-grid" aria-label="Estadísticas clave">
+              <div class="stat-card">
+                <span class="stat-number">–%</span>
+                <span class="stat-label">[Placeholder: Indicador 1]</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-number">–%</span>
+                <span class="stat-label">[Placeholder: Indicador 2]</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-number">–%</span>
+                <span class="stat-label">[Placeholder: Indicador 3]</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="estrategias-de-prevencion" class="article-section">
+          <div class="section-inner">
+            <span class="section-tag">05 · Prevención</span>
+            <h2 class="section-title">Estrategias de prevención</h2>
+            <p class="placeholder-text">[Placeholder: Intervenciones basadas en evidencia para reducir el abandono. Buenas prácticas en clubes y federaciones de natación.]</p>
+            <p class="placeholder-text">[Placeholder: Rol del entrenador, la familia y el entorno social en la retención del deportista.]</p>
+          </div>
+        </section>
+
+        <section id="conclusiones" class="article-section">
+          <div class="section-inner">
+            <span class="section-tag">06 · Conclusiones</span>
+            <h2 class="section-title">Conclusiones</h2>
+            <p class="placeholder-text">[Placeholder: Síntesis de los principales hallazgos y recomendaciones para entrenadores, clubes y federaciones.]</p>
+            <p class="placeholder-text">[Placeholder: Líneas futuras de investigación y reflexión final.]</p>
+          </div>
+        </section>
+
+      </article>
+    </main>
+
+  </div><!-- /.layout -->
+
+  <script>
+    (function () {
+      const toggle   = document.querySelector('.nav-toggle');
+      const sidebar  = document.getElementById('sidebar');
+      const backdrop = document.getElementById('sidebar-backdrop');
+
+      function openSidebar() {
+        sidebar.classList.add('open');
+        backdrop.classList.add('visible');
+        toggle.setAttribute('aria-expanded', 'true');
+      }
+      function closeSidebar() {
+        sidebar.classList.remove('open');
+        backdrop.classList.remove('visible');
+        toggle.setAttribute('aria-expanded', 'false');
+      }
+
+      toggle.addEventListener('click', function () {
+        sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
+      });
+
+      backdrop.addEventListener('click', closeSidebar);
+
+      sidebar.querySelectorAll('.nav-link').forEach(function (link) {
+        link.addEventListener('click', function () {
+          if (window.innerWidth < 768) closeSidebar();
+        });
+      });
+
+      // IntersectionObserver — active nav highlight
+      var navLinks = document.querySelectorAll('.nav-link');
+      var sections = document.querySelectorAll('.article-section');
+
+      var linkMap = {};
+      navLinks.forEach(function (link) {
+        var id = link.getAttribute('href').slice(1);
+        linkMap[id] = link;
+      });
+
+      var observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            navLinks.forEach(function (l) { l.classList.remove('active'); });
+            var active = linkMap[entry.target.id];
+            if (active) active.classList.add('active');
+          }
+        });
+      }, {
+        rootMargin: '-20% 0px -70% 0px',
+        threshold: 0
+      });
+
+      sections.forEach(function (sec) { observer.observe(sec); });
+    })();
+  </script>
+
+</body>
+</html>
