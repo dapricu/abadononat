@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <style>
     /* ── Custom properties ─────────────────────────────────── */
     :root {
@@ -466,6 +467,89 @@
       line-height: 1.4;
     }
 
+    /* ── Viz blocks ──────────────────────────────────────────── */
+    .viz-block {
+      background: var(--color-white);
+      border: 1px solid var(--color-border);
+      border-radius: 10px;
+      padding: 1.5rem 1.5rem 1.25rem;
+      margin-top: 2rem;
+    }
+    .viz-title {
+      font-family: var(--font-display);
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--color-deep);
+      margin-bottom: 0.2rem;
+    }
+    .viz-caption {
+      font-size: 0.78rem;
+      color: var(--color-muted);
+      line-height: 1.5;
+      margin-bottom: 1.25rem;
+    }
+    .chart-wrap {
+      position: relative;
+      height: 260px;
+    }
+
+    /* ── Metric counters ─────────────────────────────────────── */
+    .metric-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-top: 0.5rem;
+    }
+    .metric-card {
+      background: var(--color-white);
+      border: 1px solid var(--color-border);
+      border-radius: 10px;
+      padding: 1.5rem 1rem 1.25rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .metric-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--color-deep), var(--color-mid));
+    }
+    .metric-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 20px rgba(0,119,182,0.1);
+    }
+    .metric-value {
+      font-family: var(--font-display);
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--color-deep);
+      line-height: 1;
+      margin-bottom: 0.6rem;
+    }
+    .metric-unit { font-size: 1.3rem; opacity: 0.65; }
+    .metric-label {
+      font-size: 0.79rem;
+      color: var(--color-muted);
+      line-height: 1.45;
+      margin-bottom: 0.6rem;
+    }
+    .metric-sublabel {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--color-mid);
+    }
+
+    @media (max-width: 600px) {
+      .metric-row { grid-template-columns: 1fr; }
+      .chart-wrap { height: 220px; }
+    }
+
     /* ── Mobile overlay backdrop ────────────────────────────── */
     .sidebar-backdrop {
       display: none;
@@ -533,6 +617,7 @@
       <ul class="nav-list" role="list">
         <li><a class="nav-link" href="#introduccion">Introducción</a></li>
         <li><a class="nav-link" href="#el-problema">El problema</a></li>
+        <li><a class="nav-link" href="#gravedad">¿Cuál es la gravedad?</a></li>
         <li><a class="nav-link" href="#factores-del-abandono">Factores del abandono</a></li>
         <li><a class="nav-link" href="#datos-y-estadisticas">Datos y estadísticas</a></li>
         <li><a class="nav-link" href="#estrategias-de-prevencion">Estrategias de prevención</a></li>
@@ -674,9 +759,71 @@
           </div>
         </section>
 
+        <section id="gravedad" class="article-section">
+          <div class="section-inner">
+            <span class="section-tag">03 · Gravedad</span>
+            <h2 class="section-title">¿Cuál es la gravedad?</h2>
+
+            <p class="body-text reveal">
+              Los datos internacionales revelan que la natación presenta una de las tasas de abandono
+              más elevadas entre los deportes juveniles organizados en Europa. Tres visualizaciones
+              permiten dimensionar el problema: la comparación con otros deportes, la curva de
+              participación por edad y los indicadores propuestos para su seguimiento sistemático.
+            </p>
+
+            <!-- Chart 1: bar chart -->
+            <div class="viz-block reveal">
+              <p class="viz-title">Abandono antes de los 18 años: natación vs. otros deportes (Europa)</p>
+              <p class="viz-caption">Porcentaje acumulado de deportistas que abandonan la práctica organizada antes de cumplir 18 años, por modalidad deportiva.</p>
+              <div class="chart-wrap">
+                <canvas id="chart-barras" aria-label="Gráfico de barras: tasa de abandono por deporte"></canvas>
+              </div>
+            </div>
+
+            <!-- Chart 2: line chart -->
+            <div class="viz-block reveal">
+              <p class="viz-title">Curva de participación por edad — Swimming Australia</p>
+              <p class="viz-caption">Participantes activos en miles según grupo de edad. El descenso se acelera bruscamente entre los <strong>10 y 11 años</strong>, momento crítico de la especialización deportiva.</p>
+              <div class="chart-wrap">
+                <canvas id="chart-linea" aria-label="Gráfico de línea: participación Swimming Australia por edad"></canvas>
+              </div>
+            </div>
+
+            <!-- Metric counters -->
+            <p class="body-text reveal" style="margin-top:2rem;">
+              El artículo propone tres indicadores clave para monitorizar la salud del sistema
+              deportivo en natación y evaluar la eficacia de las intervenciones preventivas:
+            </p>
+            <div class="metric-row">
+              <div class="metric-card reveal reveal-delay-1">
+                <div class="metric-value">
+                  <span class="metric-num" data-target="12">0</span><span class="metric-unit">%</span>
+                </div>
+                <p class="metric-label">Deportistas que permanecen en competición tras cumplir 20 años</p>
+                <span class="metric-sublabel">Indicador 1</span>
+              </div>
+              <div class="metric-card reveal reveal-delay-2">
+                <div class="metric-value">
+                  <span class="metric-num" data-target="75">0</span><span class="metric-unit">%</span>
+                </div>
+                <p class="metric-label">Tasa de abandono competitivo acumulada entre los 12 y 18 años</p>
+                <span class="metric-sublabel">Indicador 2</span>
+              </div>
+              <div class="metric-card reveal reveal-delay-3">
+                <div class="metric-value">
+                  <span class="metric-num" data-target="38">0</span><span class="metric-unit">%</span>
+                </div>
+                <p class="metric-label">Abandono deportivo total: no practican ninguna modalidad acuática</p>
+                <span class="metric-sublabel">Indicador 3</span>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
         <section id="factores-del-abandono" class="article-section">
           <div class="section-inner">
-            <span class="section-tag">03 · Factores</span>
+            <span class="section-tag">04 · Factores</span>
             <h2 class="section-title">Factores del abandono</h2>
             <p class="placeholder-text">[Placeholder: Análisis de los principales factores que contribuyen al abandono: motivacionales, sociales, físicos y organizativos.]</p>
             <ul class="placeholder-list">
@@ -690,7 +837,7 @@
 
         <section id="datos-y-estadisticas" class="article-section">
           <div class="section-inner">
-            <span class="section-tag">04 · Datos</span>
+            <span class="section-tag">05 · Datos</span>
             <h2 class="section-title">Datos y estadísticas</h2>
             <p class="placeholder-text">[Placeholder: Estadísticas nacionales e internacionales sobre tasas de abandono en natación por edad, género y nivel competitivo.]</p>
             <div class="stat-grid" aria-label="Estadísticas clave">
@@ -712,7 +859,7 @@
 
         <section id="estrategias-de-prevencion" class="article-section">
           <div class="section-inner">
-            <span class="section-tag">05 · Prevención</span>
+            <span class="section-tag">06 · Prevención</span>
             <h2 class="section-title">Estrategias de prevención</h2>
             <p class="placeholder-text">[Placeholder: Intervenciones basadas en evidencia para reducir el abandono. Buenas prácticas en clubes y federaciones de natación.]</p>
             <p class="placeholder-text">[Placeholder: Rol del entrenador, la familia y el entorno social en la retención del deportista.]</p>
@@ -721,7 +868,7 @@
 
         <section id="conclusiones" class="article-section">
           <div class="section-inner">
-            <span class="section-tag">06 · Conclusiones</span>
+            <span class="section-tag">07 · Conclusiones</span>
             <h2 class="section-title">Conclusiones</h2>
             <p class="placeholder-text">[Placeholder: Síntesis de los principales hallazgos y recomendaciones para entrenadores, clubes y federaciones.]</p>
             <p class="placeholder-text">[Placeholder: Líneas futuras de investigación y reflexión final.]</p>
@@ -820,6 +967,158 @@
       }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
 
       revealEls.forEach(function (el) { revealObserver.observe(el); });
+
+      // ── Chart.js: bar chart ──────────────────────────────────
+      var chartsInit = {};
+
+      function buildBarChart() {
+        if (chartsInit.bar) return;
+        chartsInit.bar = true;
+        new Chart(document.getElementById('chart-barras'), {
+          type: 'bar',
+          data: {
+            labels: ['Natación', 'Gimnasia', 'Atletismo', 'Fútbol sala', 'Baloncesto'],
+            datasets: [{
+              label: '% de abandono',
+              data: [75, 62, 55, 44, 38],
+              backgroundColor: ['#0077b6', '#90e0ef', '#90e0ef', '#90e0ef', '#90e0ef'],
+              hoverBackgroundColor: ['#005f8e', '#00b4d8', '#00b4d8', '#00b4d8', '#00b4d8'],
+              borderRadius: 6,
+              borderSkipped: false
+            }]
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 900, easing: 'easeOutQuart' },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: '#0d1b2a',
+                titleFont: { family: "'Inter', sans-serif", size: 12 },
+                bodyFont:  { family: "'Inter', sans-serif", size: 12 },
+                callbacks: { label: function (ctx) { return '  ' + ctx.raw + '% de abandono'; } }
+              }
+            },
+            scales: {
+              x: {
+                min: 0, max: 100,
+                ticks: {
+                  callback: function (v) { return v + '%'; },
+                  font: { family: "'Inter', sans-serif", size: 11 },
+                  color: '#5c7a93'
+                },
+                grid: { color: 'rgba(202,240,248,0.7)' }
+              },
+              y: {
+                ticks: { font: { family: "'Inter', sans-serif", size: 12 }, color: '#0d1b2a' },
+                grid: { display: false }
+              }
+            }
+          }
+        });
+      }
+
+      // ── Chart.js: line chart ─────────────────────────────────
+      function buildLineChart() {
+        if (chartsInit.line) return;
+        chartsInit.line = true;
+        new Chart(document.getElementById('chart-linea'), {
+          type: 'line',
+          data: {
+            labels: ['6','7','8','9','10','11','12','13','14','15','16','17','18'],
+            datasets: [{
+              label: 'Participantes (miles)',
+              data: [7.2, 11.5, 17.8, 23.4, 28.1, 21.6, 14.9, 10.2, 7.4, 5.1, 3.6, 2.7, 2.1],
+              borderColor: '#0077b6',
+              backgroundColor: 'rgba(0,119,182,0.08)',
+              fill: true,
+              tension: 0.42,
+              pointRadius:          [4, 4, 4, 4, 8, 8, 4, 4, 4, 4, 4, 4, 4],
+              pointBackgroundColor: [
+                '#00b4d8','#00b4d8','#00b4d8','#00b4d8',
+                '#0077b6','#cc2936',
+                '#00b4d8','#00b4d8','#00b4d8','#00b4d8','#00b4d8','#00b4d8','#00b4d8'
+              ],
+              pointBorderColor: '#fff',
+              pointBorderWidth: 2,
+              pointHoverRadius: 9
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 1100, easing: 'easeOutQuart' },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: '#0d1b2a',
+                titleFont: { family: "'Inter', sans-serif", size: 12 },
+                bodyFont:  { family: "'Inter', sans-serif", size: 12 },
+                callbacks: {
+                  title: function (items) { return 'Edad: ' + items[0].label + ' años'; },
+                  label: function (ctx) { return '  ' + ctx.raw + 'k participantes'; }
+                }
+              }
+            },
+            scales: {
+              x: {
+                title: { display: true, text: 'Edad (años)', font: { family: "'Inter', sans-serif", size: 11 }, color: '#5c7a93' },
+                ticks: { font: { family: "'Inter', sans-serif", size: 11 }, color: '#5c7a93' },
+                grid: { color: 'rgba(202,240,248,0.7)' }
+              },
+              y: {
+                title: { display: true, text: 'Participantes (miles)', font: { family: "'Inter', sans-serif", size: 11 }, color: '#5c7a93' },
+                ticks: { font: { family: "'Inter', sans-serif", size: 11 }, color: '#5c7a93' },
+                grid: { color: 'rgba(202,240,248,0.7)' }
+              }
+            }
+          }
+        });
+      }
+
+      // Lazy-init charts when their canvas enters the viewport
+      var chartObserver = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) return;
+          if (entry.target.id === 'chart-barras') buildBarChart();
+          if (entry.target.id === 'chart-linea')  buildLineChart();
+          chartObserver.unobserve(entry.target);
+        });
+      }, { threshold: 0.15 });
+
+      chartObserver.observe(document.getElementById('chart-barras'));
+      chartObserver.observe(document.getElementById('chart-linea'));
+
+      // ── Animated metric counters ─────────────────────────────
+      function animateCounter(el) {
+        var target = parseInt(el.dataset.target, 10);
+        var duration = 1400;
+        var startTs = null;
+        function step(ts) {
+          if (!startTs) startTs = ts;
+          var progress = Math.min((ts - startTs) / duration, 1);
+          var ease = 1 - Math.pow(1 - progress, 3);
+          el.textContent = Math.round(ease * target);
+          if (progress < 1) requestAnimationFrame(step);
+          else el.textContent = target;
+        }
+        requestAnimationFrame(step);
+      }
+
+      var counterObserver = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            animateCounter(entry.target);
+            counterObserver.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.6 });
+
+      document.querySelectorAll('.metric-num').forEach(function (el) {
+        counterObserver.observe(el);
+      });
     })();
   </script>
 
