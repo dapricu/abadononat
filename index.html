@@ -6,30 +6,32 @@
   <title>El abandono en la natación</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700;800&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <style>
     /* ── Custom properties ─────────────────────────────────── */
     :root {
-      --color-deep:   #0077b6;
-      --color-mid:    #00b4d8;
-      --color-light:  #90e0ef;
-      --color-bg:     #f0f9ff;
-      --color-white:  #ffffff;
-      --color-text:   #0d1b2a;
-      --color-muted:  #5c7a93;
-      --color-border: #caf0f8;
+      --color-deep:   #00c5ff;
+      --color-mid:    #0095cc;
+      --color-light:  #1a3a5c;
+      --color-bg:     #0a0e1a;
+      --color-white:  #111827;
+      --color-text:   #e8f0fe;
+      --color-muted:  #6b7f9e;
+      --color-border: #1e2d45;
+      --color-accent2:#ff6b35;
+      --color-surface2:#1a2235;
 
       --sidebar-width: 240px;
       --mobile-header-h: 52px;
 
-      --font-display: 'Montserrat', sans-serif;
-      --font-body:    'Inter', sans-serif;
+      --font-display: 'Barlow Condensed', sans-serif;
+      --font-body:    'Barlow', sans-serif;
 
       --section-gap: 4rem;
       --content-max: 720px;
 
-      --transition: 0.25s ease;
+      --transition: 0.2s ease;
     }
 
     /* ── Reset ──────────────────────────────────────────────── */
@@ -51,33 +53,36 @@
       top: 0;
       z-index: 200;
       height: var(--mobile-header-h);
-      background: var(--color-deep);
-      color: var(--color-white);
+      background: #0d1829;
+      border-bottom: 2px solid var(--color-deep);
+      box-shadow: 0 4px 20px rgba(0,197,255,0.1);
+      color: var(--color-text);
       padding: 0 1.25rem;
       align-items: center;
       justify-content: space-between;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     }
     .mobile-header .site-title {
       font-family: var(--font-display);
-      font-size: 0.95rem;
-      font-weight: 600;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
     .nav-toggle {
       background: none;
-      border: none;
-      color: var(--color-white);
-      font-size: 1.4rem;
+      border: 2px solid var(--color-deep);
+      color: var(--color-deep);
+      font-size: 1.1rem;
       cursor: pointer;
-      padding: 0.25rem 0.5rem;
+      padding: 0.2rem 0.5rem;
       line-height: 1;
       border-radius: 4px;
-      transition: background var(--transition);
+      transition: background var(--transition), color var(--transition);
     }
-    .nav-toggle:hover { background: rgba(255,255,255,0.15); }
+    .nav-toggle:hover { background: var(--color-deep); color: #000; }
 
     /* ── Layout grid ────────────────────────────────────────── */
     .layout {
@@ -108,15 +113,17 @@
     .sidebar-logo-mark {
       width: 28px;
       height: 28px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, var(--color-deep), var(--color-mid));
+      border-radius: 0;
+      background: var(--color-deep);
       flex-shrink: 0;
     }
     .sidebar-logo-text {
       font-family: var(--font-display);
-      font-size: 0.8rem;
+      font-size: 0.85rem;
       font-weight: 700;
-      color: var(--color-deep);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--color-text);
       line-height: 1.2;
     }
     .sidebar-label {
@@ -124,7 +131,7 @@
       font-size: 0.65rem;
       font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.12em;
+      letter-spacing: 3px;
       color: var(--color-muted);
       margin-bottom: 0.75rem;
     }
@@ -145,14 +152,14 @@
     }
     .nav-link:hover {
       color: var(--color-deep);
-      background: #e8f7fd;
-      border-left-color: var(--color-light);
+      background: rgba(0,197,255,0.07);
+      border-left-color: var(--color-mid);
     }
     .nav-link.active {
       color: var(--color-deep);
       font-weight: 600;
       border-left-color: var(--color-deep);
-      background: #dff3fb;
+      background: rgba(0,197,255,0.1);
     }
 
     /* ── Main content ───────────────────────────────────────── */
@@ -162,8 +169,10 @@
 
     /* ── Hero ───────────────────────────────────────────────── */
     .hero {
-      background: linear-gradient(135deg, var(--color-deep) 0%, var(--color-mid) 100%);
-      color: var(--color-white);
+      background: linear-gradient(135deg, #0d1829 0%, #111f3a 100%);
+      border-bottom: 2px solid var(--color-deep);
+      box-shadow: 0 4px 30px rgba(0,197,255,0.12);
+      color: var(--color-text);
       padding: 5rem 3rem 4.5rem;
       position: relative;
       overflow: hidden;
@@ -172,7 +181,7 @@
       content: '';
       position: absolute;
       inset: 0;
-      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Ccircle cx='30' cy='30' r='28' fill='none' stroke='rgba(255,255,255,0.05)' stroke-width='1'/%3E%3C/svg%3E") repeat;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Ccircle cx='30' cy='30' r='28' fill='none' stroke='rgba(0,197,255,0.04)' stroke-width='1'/%3E%3C/svg%3E") repeat;
       pointer-events: none;
     }
     .hero-inner {
@@ -184,10 +193,10 @@
       align-items: center;
       gap: 0.5rem;
       font-size: 0.75rem;
-      font-weight: 500;
+      font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.14em;
-      color: var(--color-light);
+      letter-spacing: 0.18em;
+      color: var(--color-deep);
       margin-bottom: 1.25rem;
     }
     .hero-eyebrow::before {
@@ -195,30 +204,35 @@
       display: inline-block;
       width: 20px;
       height: 2px;
-      background: var(--color-light);
-      border-radius: 2px;
+      background: var(--color-deep);
+      border-radius: 0;
     }
     .hero-title {
       font-family: var(--font-display);
-      font-size: clamp(1.75rem, 4vw, 2.8rem);
-      font-weight: 700;
-      line-height: 1.18;
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 800;
+      letter-spacing: 3px;
+      line-height: 1.1;
       margin-bottom: 1.25rem;
+      text-transform: uppercase;
     }
     .hero-subtitle {
-      font-size: 1.05rem;
-      font-weight: 400;
-      color: rgba(255,255,255,0.88);
+      font-size: 1rem;
+      font-weight: 300;
+      color: rgba(232,240,254,0.82);
       max-width: 54ch;
-      line-height: 1.65;
+      line-height: 1.7;
       margin-bottom: 2rem;
+      letter-spacing: 0.02em;
     }
     .hero-meta {
       display: flex;
       align-items: center;
       gap: 1.25rem;
-      font-size: 0.8rem;
-      color: rgba(255,255,255,0.65);
+      font-size: 0.75rem;
+      color: rgba(232,240,254,0.5);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
     }
     .hero-meta-item {
       display: flex;
@@ -243,22 +257,25 @@
     .section-inner { max-width: var(--content-max); }
     .section-tag {
       display: inline-block;
-      font-size: 0.65rem;
+      font-family: var(--font-display);
+      font-size: 0.7rem;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: var(--color-mid);
+      letter-spacing: 3px;
+      color: var(--color-deep);
       margin-bottom: 0.6rem;
     }
     .section-title {
       font-family: var(--font-display);
-      font-size: 1.5rem;
-      font-weight: 700;
+      font-size: 1.75rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
       color: var(--color-deep);
       margin-bottom: 1.5rem;
       padding-bottom: 0.6rem;
-      border-bottom: 2px solid var(--color-light);
-      line-height: 1.25;
+      border-bottom: 2px solid var(--color-border);
+      line-height: 1.2;
     }
     .placeholder-text {
       color: var(--color-muted);
@@ -313,27 +330,28 @@
       margin: 2rem 0 1.75rem;
     }
     .type-btn {
-      padding: 0.45rem 1.1rem;
-      border-radius: 100px;
-      border: 2px solid var(--color-border);
-      background: var(--color-white);
-      font-family: var(--font-body);
+      padding: 0.4rem 1rem;
+      border-radius: 4px;
+      border: 1px solid var(--color-border);
+      background: transparent;
+      font-family: var(--font-display);
       font-size: 0.85rem;
-      font-weight: 500;
+      font-weight: 600;
+      letter-spacing: 1px;
       color: var(--color-muted);
       cursor: pointer;
       transition: border-color var(--transition), color var(--transition),
-                  background var(--transition), transform var(--transition);
+                  background var(--transition);
     }
     .type-btn:hover {
-      border-color: var(--color-mid);
+      border-color: var(--color-deep);
       color: var(--color-deep);
-      transform: translateY(-1px);
+      background: var(--color-surface2);
     }
     .type-btn.active {
       background: var(--color-deep);
       border-color: var(--color-deep);
-      color: var(--color-white);
+      color: #000;
     }
 
     /* ── Definition cards ────────────────────────────────────── */
@@ -359,12 +377,12 @@
       position: absolute;
       top: 0; right: 0;
       width: 80px; height: 80px;
-      background: radial-gradient(circle at top right, rgba(0,180,216,0.07), transparent 70%);
+      background: radial-gradient(circle at top right, rgba(0,197,255,0.06), transparent 70%);
       pointer-events: none;
     }
     .def-card:hover {
       transform: translateY(-6px);
-      box-shadow: 0 10px 28px rgba(0,119,182,0.13);
+      box-shadow: 0 10px 28px rgba(0,197,255,0.18);
       border-left-color: var(--color-deep);
     }
     .def-card.dimmed {
@@ -383,14 +401,17 @@
     .def-author-block { display: flex; flex-direction: column; gap: 0.1rem; }
     .def-author {
       font-family: var(--font-display);
-      font-size: 1.05rem;
-      font-weight: 700;
+      font-size: 1.1rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
       color: var(--color-deep);
     }
     .def-year {
-      font-size: 0.78rem;
+      font-size: 0.75rem;
       color: var(--color-muted);
       font-weight: 500;
+      letter-spacing: 1px;
     }
     .def-badge {
       display: inline-block;
@@ -403,9 +424,9 @@
       white-space: nowrap;
       flex-shrink: 0;
     }
-    .def-badge--competitivo { background: rgba(0,119,182,0.1);  color: #005f8e; }
-    .def-badge--deportivo   { background: rgba(0,180,216,0.12); color: #007a99; }
-    .def-badge--ambos       { background: rgba(144,224,239,0.3); color: #005f8e; }
+    .def-badge--competitivo { background: rgba(0,197,255,0.14); color: var(--color-deep); }
+    .def-badge--deportivo   { background: rgba(0,149,204,0.15); color: #7dd3fc; }
+    .def-badge--ambos       { background: rgba(0,197,255,0.08); color: #90e0ef; }
 
     .def-quote {
       font-size: 0.95rem;
@@ -477,16 +498,19 @@
     }
     .viz-title {
       font-family: var(--font-display);
-      font-size: 0.88rem;
+      font-size: 0.95rem;
       font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
       color: var(--color-deep);
       margin-bottom: 0.2rem;
     }
     .viz-caption {
-      font-size: 0.78rem;
+      font-size: 0.79rem;
       color: var(--color-muted);
-      line-height: 1.5;
+      line-height: 1.55;
       margin-bottom: 1.25rem;
+      letter-spacing: 0.02em;
     }
     .chart-wrap {
       position: relative;
@@ -519,30 +543,33 @@
     }
     .metric-card:hover {
       transform: translateY(-4px);
-      box-shadow: 0 8px 20px rgba(0,119,182,0.1);
+      box-shadow: 0 8px 20px rgba(0,197,255,0.15);
     }
     .metric-value {
       font-family: var(--font-display);
-      font-size: 2.5rem;
-      font-weight: 700;
+      font-size: 2.8rem;
+      font-weight: 800;
+      letter-spacing: 2px;
       color: var(--color-deep);
       line-height: 1;
       margin-bottom: 0.6rem;
     }
-    .metric-unit { font-size: 1.3rem; opacity: 0.65; }
+    .metric-unit { font-size: 1.4rem; opacity: 0.6; }
     .metric-label {
       font-size: 0.79rem;
       color: var(--color-muted);
       line-height: 1.45;
       margin-bottom: 0.6rem;
+      letter-spacing: 0.02em;
     }
     .metric-sublabel {
       display: inline-block;
+      font-family: var(--font-display);
       font-size: 0.65rem;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--color-mid);
+      letter-spacing: 3px;
+      color: var(--color-deep);
     }
 
     @media (max-width: 600px) {
@@ -585,7 +612,7 @@
       .sidebar.open { transform: translateX(0); }
       .sidebar-backdrop { display: block; }
 
-      .hero { padding: 3rem 1.25rem 3.5rem; }
+      .hero { padding: 3rem 1.25rem 3.5rem; border-bottom-width: 2px; }
       .article-section { padding: 2.5rem 1.25rem; }
     }
 
@@ -642,7 +669,7 @@
         </div>
         <div class="hero-wave" aria-hidden="true">
           <svg viewBox="0 0 1440 48" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-            <path d="M0,32 C360,0 1080,64 1440,32 L1440,48 L0,48 Z" fill="#f0f9ff"/>
+            <path d="M0,32 C360,0 1080,64 1440,32 L1440,48 L0,48 Z" fill="#0a0e1a"/>
           </svg>
         </div>
       </section>
@@ -981,8 +1008,8 @@
             datasets: [{
               label: '% de abandono',
               data: [75, 62, 55, 44, 38],
-              backgroundColor: ['#0077b6', '#90e0ef', '#90e0ef', '#90e0ef', '#90e0ef'],
-              hoverBackgroundColor: ['#005f8e', '#00b4d8', '#00b4d8', '#00b4d8', '#00b4d8'],
+              backgroundColor: ['#00c5ff', '#1a3a5c', '#1a3a5c', '#1a3a5c', '#1a3a5c'],
+              hoverBackgroundColor: ['#33d4ff', '#1e4a72', '#1e4a72', '#1e4a72', '#1e4a72'],
               borderRadius: 6,
               borderSkipped: false
             }]
@@ -995,9 +1022,9 @@
             plugins: {
               legend: { display: false },
               tooltip: {
-                backgroundColor: '#0d1b2a',
-                titleFont: { family: "'Inter', sans-serif", size: 12 },
-                bodyFont:  { family: "'Inter', sans-serif", size: 12 },
+                backgroundColor: '#111827',
+                titleFont: { family: "'Barlow Condensed', sans-serif", size: 13 },
+                bodyFont:  { family: "'Barlow', sans-serif", size: 12 },
                 callbacks: { label: function (ctx) { return '  ' + ctx.raw + '% de abandono'; } }
               }
             },
@@ -1006,13 +1033,13 @@
                 min: 0, max: 100,
                 ticks: {
                   callback: function (v) { return v + '%'; },
-                  font: { family: "'Inter', sans-serif", size: 11 },
-                  color: '#5c7a93'
+                  font: { family: "'Barlow', sans-serif", size: 11 },
+                  color: '#6b7f9e'
                 },
-                grid: { color: 'rgba(202,240,248,0.7)' }
+                grid: { color: 'rgba(30,45,69,0.8)' }
               },
               y: {
-                ticks: { font: { family: "'Inter', sans-serif", size: 12 }, color: '#0d1b2a' },
+                ticks: { font: { family: "'Barlow Condensed', sans-serif", size: 13, weight: '600' }, color: '#e8f0fe' },
                 grid: { display: false }
               }
             }
@@ -1031,17 +1058,17 @@
             datasets: [{
               label: 'Participantes (miles)',
               data: [7.2, 11.5, 17.8, 23.4, 28.1, 21.6, 14.9, 10.2, 7.4, 5.1, 3.6, 2.7, 2.1],
-              borderColor: '#0077b6',
-              backgroundColor: 'rgba(0,119,182,0.08)',
+              borderColor: '#00c5ff',
+              backgroundColor: 'rgba(0,197,255,0.07)',
               fill: true,
               tension: 0.42,
               pointRadius:          [4, 4, 4, 4, 8, 8, 4, 4, 4, 4, 4, 4, 4],
               pointBackgroundColor: [
-                '#00b4d8','#00b4d8','#00b4d8','#00b4d8',
-                '#0077b6','#cc2936',
-                '#00b4d8','#00b4d8','#00b4d8','#00b4d8','#00b4d8','#00b4d8','#00b4d8'
+                '#6b7f9e','#6b7f9e','#6b7f9e','#6b7f9e',
+                '#00c5ff','#ff6b35',
+                '#6b7f9e','#6b7f9e','#6b7f9e','#6b7f9e','#6b7f9e','#6b7f9e','#6b7f9e'
               ],
-              pointBorderColor: '#fff',
+              pointBorderColor: '#0a0e1a',
               pointBorderWidth: 2,
               pointHoverRadius: 9
             }]
@@ -1053,9 +1080,9 @@
             plugins: {
               legend: { display: false },
               tooltip: {
-                backgroundColor: '#0d1b2a',
-                titleFont: { family: "'Inter', sans-serif", size: 12 },
-                bodyFont:  { family: "'Inter', sans-serif", size: 12 },
+                backgroundColor: '#111827',
+                titleFont: { family: "'Barlow Condensed', sans-serif", size: 13 },
+                bodyFont:  { family: "'Barlow', sans-serif", size: 12 },
                 callbacks: {
                   title: function (items) { return 'Edad: ' + items[0].label + ' años'; },
                   label: function (ctx) { return '  ' + ctx.raw + 'k participantes'; }
@@ -1064,14 +1091,14 @@
             },
             scales: {
               x: {
-                title: { display: true, text: 'Edad (años)', font: { family: "'Inter', sans-serif", size: 11 }, color: '#5c7a93' },
-                ticks: { font: { family: "'Inter', sans-serif", size: 11 }, color: '#5c7a93' },
-                grid: { color: 'rgba(202,240,248,0.7)' }
+                title: { display: true, text: 'Edad (años)', font: { family: "'Barlow', sans-serif", size: 11 }, color: '#6b7f9e' },
+                ticks: { font: { family: "'Barlow', sans-serif", size: 11 }, color: '#6b7f9e' },
+                grid: { color: 'rgba(30,45,69,0.8)' }
               },
               y: {
-                title: { display: true, text: 'Participantes (miles)', font: { family: "'Inter', sans-serif", size: 11 }, color: '#5c7a93' },
-                ticks: { font: { family: "'Inter', sans-serif", size: 11 }, color: '#5c7a93' },
-                grid: { color: 'rgba(202,240,248,0.7)' }
+                title: { display: true, text: 'Participantes (miles)', font: { family: "'Barlow', sans-serif", size: 11 }, color: '#6b7f9e' },
+                ticks: { font: { family: "'Barlow', sans-serif", size: 11 }, color: '#6b7f9e' },
+                grid: { color: 'rgba(30,45,69,0.8)' }
               }
             }
           }
