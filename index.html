@@ -29,7 +29,10 @@
       --font-body:    'Barlow', sans-serif;
 
       --section-gap: 4rem;
-      --content-max: 720px;
+      --l1-color: #4db8ff;  --l1-bg: #1a3a5c;
+      --l2-color: #4dffb0;  --l2-bg: #1a4a3a;
+      --l3-color: #ffdb4d;  --l3-bg: #3a3a1a;
+      --l4-color: #ff6b9d;  --l4-bg: #3a1a2a;
 
       --transition: 0.2s ease;
     }
@@ -86,18 +89,19 @@
 
     /* ── Layout grid ────────────────────────────────────────── */
     .layout {
-      display: grid;
-      grid-template-columns: var(--sidebar-width) 1fr;
+      display: block;
       min-height: 100vh;
-      align-items: start;
     }
 
     /* ── Sidebar ────────────────────────────────────────────── */
     .sidebar {
-      position: sticky;
+      position: fixed;
       top: 0;
+      left: 0;
+      width: var(--sidebar-width);
       height: 100vh;
       overflow-y: auto;
+      z-index: 50;
       background: var(--color-white);
       border-right: 1px solid var(--color-border);
       padding: 2rem 1rem 2rem 1.25rem;
@@ -164,6 +168,7 @@
 
     /* ── Main content ───────────────────────────────────────── */
     .content {
+      margin-left: var(--sidebar-width);
       min-width: 0;
     }
 
@@ -186,7 +191,6 @@
     }
     .hero-inner {
       position: relative;
-      max-width: var(--content-max);
     }
     .hero-eyebrow {
       display: inline-flex;
@@ -254,7 +258,7 @@
       padding: var(--section-gap) 3rem;
     }
     .article-section:last-child { border-bottom: none; }
-    .section-inner { max-width: var(--content-max); }
+    .section-inner { }
     .section-tag {
       display: inline-block;
       font-family: var(--font-display);
@@ -596,17 +600,12 @@
       border-left: 3px solid var(--color-border);
       border-radius: 4px;
       padding: 9px 14px 9px 10px;
-      cursor: grab;
       transition: background var(--transition), border-left-color var(--transition);
-      user-select: none;
-      -webkit-user-select: none;
     }
-    .rank-item:hover, .rank-item.drag-over {
+    .rank-item:hover {
       border-left-color: var(--color-deep);
       background: rgba(0,197,255,0.07);
     }
-    .rank-item.dragging { opacity: 0.35; cursor: grabbing; }
-    .rank-item.drop-above { border-top: 2px solid var(--color-deep); }
     .rank-num {
       font-family: var(--font-display);
       font-size: 1.1rem;
@@ -617,7 +616,6 @@
     }
     .rank-icon { font-size: 0.95rem; width: 22px; text-align: center; flex-shrink: 0; }
     .rank-text { flex: 1; font-size: 0.875rem; color: var(--color-text); line-height: 1.35; }
-    .rank-handle { color: var(--color-muted); font-size: 0.9rem; opacity: 0.35; }
 
     /* ── Pathway SVG ─────────────────────────────────────────── */
     .pathway-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 0.5rem 0; }
@@ -638,6 +636,171 @@
       transition: stroke-dashoffset 1.4s ease;
     }
     .pathway-animate .pathway-line { stroke-dashoffset: 0; }
+
+    /* ── Proposals: staircase & accordion ──────────────────── */
+    .lever-staircase {
+      display: flex;
+      align-items: flex-end;
+      gap: 4px;
+      margin: 2rem 0 0;
+      max-width: 480px;
+    }
+    .lever-step {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+      padding: 0.5rem 0.25rem 0.4rem;
+      border-radius: 4px 4px 0 0;
+      text-align: center;
+    }
+    .lever-step.ls-1 { height: 90px; background: var(--l1-bg); border-top: 3px solid var(--l1-color); }
+    .lever-step.ls-2 { height: 68px; background: var(--l2-bg); border-top: 3px solid var(--l2-color); }
+    .lever-step.ls-3 { height: 48px; background: var(--l3-bg); border-top: 3px solid var(--l3-color); }
+    .lever-step.ls-4 { height: 30px; background: var(--l4-bg); border-top: 3px solid var(--l4-color); }
+    .ls-label {
+      font-family: var(--font-display);
+      font-size: 0.65rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .lever-step.ls-1 .ls-label { color: var(--l1-color); }
+    .lever-step.ls-2 .ls-label { color: var(--l2-color); }
+    .lever-step.ls-3 .ls-label { color: var(--l3-color); }
+    .lever-step.ls-4 .ls-label { color: var(--l4-color); }
+    .ls-sublabel {
+      font-size: 0.6rem;
+      color: var(--color-muted);
+      line-height: 1.2;
+      margin-top: 2px;
+    }
+    .lever-staircase-wrap {
+      margin: 2rem 0;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .ls-caption {
+      font-size: 0.75rem;
+      color: var(--color-muted);
+      margin-top: 0.5rem;
+      letter-spacing: 0.03em;
+    }
+    .ls-caption strong { color: var(--color-text); }
+    /* Lever groups */
+    .lever-group { margin-top: 2.5rem; }
+    .lever-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      padding: 1rem 1.25rem;
+      border-radius: 6px;
+      margin-bottom: 0.75rem;
+    }
+    .lever-badge {
+      font-family: var(--font-display);
+      font-size: 0.65rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 0.2rem 0.65rem;
+      border-radius: 100px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      margin-top: 3px;
+    }
+    .lh-1 { background: var(--l1-bg); border-left: 3px solid var(--l1-color); }
+    .lh-2 { background: var(--l2-bg); border-left: 3px solid var(--l2-color); }
+    .lh-3 { background: var(--l3-bg); border-left: 3px solid var(--l3-color); }
+    .lh-4 { background: var(--l4-bg); border-left: 3px solid var(--l4-color); }
+    .lh-1 .lever-badge { background: var(--l1-color); color: #0a0e1a; }
+    .lh-2 .lever-badge { background: var(--l2-color); color: #0a0e1a; }
+    .lh-3 .lever-badge { background: var(--l3-color); color: #0a0e1a; }
+    .lh-4 .lever-badge { background: var(--l4-color); color: #0a0e1a; }
+    .lever-title {
+      font-family: var(--font-display);
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 0.25rem;
+    }
+    .lh-1 .lever-title { color: var(--l1-color); }
+    .lh-2 .lever-title { color: var(--l2-color); }
+    .lh-3 .lever-title { color: var(--l3-color); }
+    .lh-4 .lever-title { color: var(--l4-color); }
+    .lever-desc { font-size: 0.82rem; color: var(--color-muted); line-height: 1.5; }
+    /* Accordion */
+    .accordion-card {
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 6px;
+      background: var(--color-white);
+    }
+    .accordion-header {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0.85rem 1.25rem;
+      background: none;
+      border: none;
+      cursor: pointer;
+      text-align: left;
+      transition: background var(--transition);
+    }
+    .accordion-header:hover { background: rgba(255,255,255,0.03); }
+    .ah-1 { border-left: 3px solid var(--l1-color); }
+    .ah-2 { border-left: 3px solid var(--l2-color); }
+    .ah-3 { border-left: 3px solid var(--l3-color); }
+    .ah-4 { border-left: 3px solid var(--l4-color); }
+    .acc-icon { font-size: 1.05rem; flex-shrink: 0; }
+    .acc-title {
+      flex: 1;
+      font-size: 0.92rem;
+      color: var(--color-text);
+      font-weight: 500;
+      line-height: 1.35;
+    }
+    .acc-target {
+      font-family: var(--font-display);
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 0.15rem 0.5rem;
+      border-radius: 100px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .at-fed  { background: rgba(0,197,255,0.13);   color: var(--color-deep); }
+    .at-club { background: rgba(77,255,176,0.13);  color: #4dffb0; }
+    .at-ent  { background: rgba(255,219,77,0.13);  color: #ffdb4d; }
+    .acc-chevron {
+      color: var(--color-muted);
+      font-size: 0.85rem;
+      transition: transform var(--transition);
+      flex-shrink: 0;
+    }
+    .accordion-card.open .acc-chevron { transform: rotate(180deg); }
+    .accordion-body {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.38s ease;
+    }
+    .accordion-card.open .accordion-body { max-height: 500px; }
+    .accordion-body-inner {
+      padding: 0.9rem 1.25rem 1.1rem;
+      border-top: 1px solid var(--color-border);
+    }
+    .accordion-body-inner p {
+      font-size: 0.875rem;
+      line-height: 1.75;
+      color: var(--color-text);
+    }
 
     /* ── Mobile overlay backdrop ────────────────────────────── */
     .sidebar-backdrop {
@@ -705,12 +868,10 @@
       <p class="sidebar-label">Contenido</p>
       <ul class="nav-list" role="list">
         <li><a class="nav-link" href="#introduccion">Introducción</a></li>
-        <li><a class="nav-link" href="#el-problema">El problema</a></li>
-        <li><a class="nav-link" href="#gravedad">¿Cuál es la gravedad?</a></li>
-        <li><a class="nav-link" href="#factores-del-abandono">Factores del abandono</a></li>
+        <li><a class="nav-link" href="#el-problema">El problema del abandono</a></li>
+        <li><a class="nav-link" href="#gravedad">La gravedad del problema</a></li>
         <li><a class="nav-link" href="#motivaciones">Motivaciones</a></li>
-        <li><a class="nav-link" href="#datos-y-estadisticas">Datos y estadísticas</a></li>
-        <li><a class="nav-link" href="#estrategias-de-prevencion">Estrategias de prevención</a></li>
+        <li><a class="nav-link" href="#propuestas">Propuestas de mejora</a></li>
         <li><a class="nav-link" href="#conclusiones">Conclusiones</a></li>
       </ul>
     </nav>
@@ -911,23 +1072,9 @@
           </div>
         </section>
 
-        <section id="factores-del-abandono" class="article-section">
-          <div class="section-inner">
-            <span class="section-tag">04 · Factores</span>
-            <h2 class="section-title">Factores del abandono</h2>
-            <p class="placeholder-text">[Placeholder: Análisis de los principales factores que contribuyen al abandono: motivacionales, sociales, físicos y organizativos.]</p>
-            <ul class="placeholder-list">
-              <li>[Placeholder: Factor 1 — descripción breve]</li>
-              <li>[Placeholder: Factor 2 — descripción breve]</li>
-              <li>[Placeholder: Factor 3 — descripción breve]</li>
-              <li>[Placeholder: Factor 4 — descripción breve]</li>
-            </ul>
-          </div>
-        </section>
-
         <section id="motivaciones" class="article-section">
           <div class="section-inner">
-            <span class="section-tag">05 · Motivaciones</span>
+            <span class="section-tag">04 · Motivaciones</span>
             <h2 class="section-title">¿Por qué nadan? ¿Por qué dejan de nadar?</h2>
 
             <p class="body-text reveal">
@@ -942,70 +1089,58 @@
               <p class="viz-title">Las 10 fuentes de diversión en natación — USA Swimming</p>
               <p class="viz-caption">
                 Según el estudio de USA Swimming, estos son los diez factores que los nadadores jóvenes
-                identifican como fuentes de disfrute. <strong style="color:var(--color-deep)">Arrastra los elementos</strong>
-                para reordenarlos según tu criterio de importancia.
+                identifican como fuentes de disfrute, ordenados por importancia.
               </p>
-              <p class="ranking-hint">↕ Arrastra para reordenar</p>
               <ol class="ranking-list" id="ranking-list">
-                <li class="rank-item" draggable="true" data-id="1">
+                <li class="rank-item" data-id="1">
                   <span class="rank-num">01</span>
                   <span class="rank-icon">🏊</span>
                   <span class="rank-text">Esforzarse al máximo y dar lo mejor de uno mismo</span>
-                  <span class="rank-handle">⠿</span>
                 </li>
-                <li class="rank-item" draggable="true" data-id="2">
+                <li class="rank-item" data-id="2">
                   <span class="rank-num">02</span>
                   <span class="rank-icon">📈</span>
                   <span class="rank-text">Mejorar las habilidades técnicas y aprender cosas nuevas</span>
-                  <span class="rank-handle">⠿</span>
                 </li>
-                <li class="rank-item" draggable="true" data-id="3">
+                <li class="rank-item" data-id="3">
                   <span class="rank-num">03</span>
                   <span class="rank-icon">😄</span>
                   <span class="rank-text">Vivir emociones y momentos excitantes durante la práctica</span>
-                  <span class="rank-handle">⠿</span>
                 </li>
-                <li class="rank-item" draggable="true" data-id="4">
+                <li class="rank-item" data-id="4">
                   <span class="rank-num">04</span>
                   <span class="rank-icon">👥</span>
                   <span class="rank-text">Estar con los amigos y pertenecer a un grupo</span>
-                  <span class="rank-handle">⠿</span>
                 </li>
-                <li class="rank-item" draggable="true" data-id="5">
+                <li class="rank-item" data-id="5">
                   <span class="rank-num">05</span>
                   <span class="rank-icon">🎯</span>
                   <span class="rank-text">Superar retos personales y situaciones difíciles</span>
-                  <span class="rank-handle">⠿</span>
                 </li>
-                <li class="rank-item" draggable="true" data-id="6">
+                <li class="rank-item" data-id="6">
                   <span class="rank-num">06</span>
                   <span class="rank-icon">💪</span>
                   <span class="rank-text">Mantener la condición física y estar en forma</span>
-                  <span class="rank-handle">⠿</span>
                 </li>
-                <li class="rank-item" draggable="true" data-id="7">
+                <li class="rank-item" data-id="7">
                   <span class="rank-num">07</span>
                   <span class="rank-icon">🏆</span>
                   <span class="rank-text">Ganar y conseguir buenos resultados en competición</span>
-                  <span class="rank-handle">⠿</span>
                 </li>
-                <li class="rank-item" draggable="true" data-id="8">
+                <li class="rank-item" data-id="8">
                   <span class="rank-num">08</span>
                   <span class="rank-icon">👨‍🏫</span>
                   <span class="rank-text">Sentir que el entrenador se preocupa por el deportista como persona</span>
-                  <span class="rank-handle">⠿</span>
                 </li>
-                <li class="rank-item" draggable="true" data-id="9">
+                <li class="rank-item" data-id="9">
                   <span class="rank-num">09</span>
                   <span class="rank-icon">🤝</span>
                   <span class="rank-text">Trabajo en equipo y sentido de pertenencia al club</span>
-                  <span class="rank-handle">⠿</span>
                 </li>
-                <li class="rank-item" draggable="true" data-id="10">
+                <li class="rank-item" data-id="10">
                   <span class="rank-num">10</span>
                   <span class="rank-icon">🌟</span>
                   <span class="rank-text">Reconocimiento externo y valoración de la habilidad por otros</span>
-                  <span class="rank-handle">⠿</span>
                 </li>
               </ol>
             </div>
@@ -1097,40 +1232,193 @@
           </div>
         </section>
 
-        <section id="datos-y-estadisticas" class="article-section">
+        <section id="propuestas" class="article-section">
           <div class="section-inner">
-            <span class="section-tag">06 · Datos</span>
-            <h2 class="section-title">Datos y estadísticas</h2>
-            <p class="placeholder-text">[Placeholder: Estadísticas nacionales e internacionales sobre tasas de abandono en natación por edad, género y nivel competitivo.]</p>
-            <div class="stat-grid" aria-label="Estadísticas clave">
-              <div class="stat-card">
-                <span class="stat-number">–%</span>
-                <span class="stat-label">[Placeholder: Indicador 1]</span>
+            <span class="section-tag">05 · Propuestas</span>
+            <h2 class="section-title">Propuestas de mejora</h2>
+
+            <p class="body-text reveal">
+              Partiendo del marco de Meadows (1999) sobre puntos de apalancamiento en sistemas complejos,
+              las propuestas se organizan en cuatro niveles de profundidad de impacto. Actuar en los
+              niveles superiores produce cambios más duraderos, pero exige mayor voluntad institucional.
+            </p>
+
+            <!-- Staircase impact bar -->
+            <div class="lever-staircase-wrap reveal">
+              <div class="lever-staircase" role="img" aria-label="Jerarquía de impacto: Nivel 1 mayor impacto, Nivel 4 menor impacto">
+                <div class="lever-step ls-1">
+                  <span class="ls-label">Nivel 1</span>
+                  <span class="ls-sublabel">Paradigma</span>
+                </div>
+                <div class="lever-step ls-2">
+                  <span class="ls-label">Nivel 2</span>
+                  <span class="ls-sublabel">Estructura</span>
+                </div>
+                <div class="lever-step ls-3">
+                  <span class="ls-label">Nivel 3</span>
+                  <span class="ls-sublabel">Información</span>
+                </div>
+                <div class="lever-step ls-4">
+                  <span class="ls-label">Nivel 4</span>
+                </div>
               </div>
-              <div class="stat-card">
-                <span class="stat-number">–%</span>
-                <span class="stat-label">[Placeholder: Indicador 2]</span>
+              <p class="ls-caption">↑ <strong>Mayor profundidad de impacto</strong> · Los niveles superiores cambian el sistema de raíz, no solo sus síntomas.</p>
+            </div>
+
+            <!-- Level 1: Paradigma -->
+            <div class="lever-group reveal" data-level="1">
+              <div class="lever-header lh-1">
+                <span class="lever-badge">Nivel 1</span>
+                <div>
+                  <h3 class="lever-title">Paradigma y visión sistémica</h3>
+                  <p class="lever-desc">El nivel de mayor impacto. Cambiar las creencias y valores que estructuran el sistema deportivo.</p>
+                </div>
               </div>
-              <div class="stat-card">
-                <span class="stat-number">–%</span>
-                <span class="stat-label">[Placeholder: Indicador 3]</span>
+              <div class="accordion-card" data-acc>
+                <button class="accordion-header ah-1">
+                  <span class="acc-icon">🧭</span>
+                  <span class="acc-title">Redefinir el éxito en natación juvenil</span>
+                  <span class="acc-target at-fed">Federación</span>
+                  <span class="acc-chevron">▾</span>
+                </button>
+                <div class="accordion-body">
+                  <div class="accordion-body-inner">
+                    <p>Impulsar un cambio institucional en los criterios de éxito deportivo: priorizar la participación sostenida, el bienestar y el desarrollo integral por encima de los resultados en competición prematura. Implica reformar los sistemas de reconocimiento y premiación de clubes y entrenadores para alinearlos con indicadores de retención a largo plazo.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="accordion-card" data-acc>
+                <button class="accordion-header ah-1">
+                  <span class="acc-icon">🎓</span>
+                  <span class="acc-title">Formación en coaching centrado en el deportista</span>
+                  <span class="acc-target at-ent">Entrenador</span>
+                  <span class="acc-chevron">▾</span>
+                </button>
+                <div class="accordion-body">
+                  <div class="accordion-body-inner">
+                    <p>Integrar en los currículos de formación de entrenadores los fundamentos del coaching positivo, la teoría de autodeterminación y el desarrollo a largo plazo del deportista (LTAD). Pasar de un modelo centrado en el rendimiento a uno centrado en la persona, donde el disfrute y la motivación autónoma son criterios de calidad del entrenamiento.</p>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </section>
 
-        <section id="estrategias-de-prevencion" class="article-section">
-          <div class="section-inner">
-            <span class="section-tag">07 · Prevención</span>
-            <h2 class="section-title">Estrategias de prevención</h2>
-            <p class="placeholder-text">[Placeholder: Intervenciones basadas en evidencia para reducir el abandono. Buenas prácticas en clubes y federaciones de natación.]</p>
-            <p class="placeholder-text">[Placeholder: Rol del entrenador, la familia y el entorno social en la retención del deportista.]</p>
+            <!-- Level 2: Estructura y reglas -->
+            <div class="lever-group reveal" data-level="2">
+              <div class="lever-header lh-2">
+                <span class="lever-badge">Nivel 2</span>
+                <div>
+                  <h3 class="lever-title">Estructura y reglas del sistema</h3>
+                  <p class="lever-desc">Reglas, incentivos y estructura organizativa que configuran los comportamientos posibles dentro del sistema.</p>
+                </div>
+              </div>
+              <div class="accordion-card" data-acc>
+                <button class="accordion-header ah-2">
+                  <span class="acc-icon">📅</span>
+                  <span class="acc-title">Reforma del calendario competitivo juvenil</span>
+                  <span class="acc-target at-fed">Federación</span>
+                  <span class="acc-chevron">▾</span>
+                </button>
+                <div class="accordion-body">
+                  <div class="accordion-body-inner">
+                    <p>Reducir la densidad competitiva en las categorías de iniciación (10–14 años). Diseñar un modelo de competición por etapas que priorice el aprendizaje y el disfrute en las primeras fases e incremente progresivamente la exigencia competitiva con la edad, en coherencia con el Sport Participation Pathway Model de Côté (1999).</p>
+                  </div>
+                </div>
+              </div>
+              <div class="accordion-card" data-acc>
+                <button class="accordion-header ah-2">
+                  <span class="acc-icon">⏳</span>
+                  <span class="acc-title">Política de especialización tardía</span>
+                  <span class="acc-target at-club">Club</span>
+                  <span class="acc-chevron">▾</span>
+                </button>
+                <div class="accordion-body">
+                  <div class="accordion-body-inner">
+                    <p>Establecer directrices de club que desincentiven la especialización temprana antes de los 14 años. Promover la práctica multimodal y el muestreo deportivo durante las etapas de iniciación, reduciendo la presión por el rendimiento en edades en las que el factor protector más robusto frente al abandono es el disfrute percibido.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Level 3: Flujos de información -->
+            <div class="lever-group reveal" data-level="3">
+              <div class="lever-header lh-3">
+                <span class="lever-badge">Nivel 3</span>
+                <div>
+                  <h3 class="lever-title">Flujos de información y retroalimentación</h3>
+                  <p class="lever-desc">Quién recibe qué información y cuándo. Mejorar los flujos produce mejores decisiones sin cambiar las reglas.</p>
+                </div>
+              </div>
+              <div class="accordion-card" data-acc>
+                <button class="accordion-header ah-3">
+                  <span class="acc-icon">📊</span>
+                  <span class="acc-title">Sistema de alerta temprana del abandono</span>
+                  <span class="acc-target at-club">Club</span>
+                  <span class="acc-chevron">▾</span>
+                </button>
+                <div class="accordion-body">
+                  <div class="accordion-body-inner">
+                    <p>Implementar un protocolo sistemático de seguimiento del bienestar y la motivación de los nadadores. Identificar señales de riesgo —descenso de asistencia, cambios de actitud, verbalización de deseo de abandonar— y activar intervenciones preventivas antes de que la decisión de dejarlo sea irreversible.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="accordion-card" data-acc>
+                <button class="accordion-header ah-3">
+                  <span class="acc-icon">💬</span>
+                  <span class="acc-title">Encuestas periódicas de satisfacción y motivación</span>
+                  <span class="acc-target at-ent">Entrenador</span>
+                  <span class="acc-chevron">▾</span>
+                </button>
+                <div class="accordion-body">
+                  <div class="accordion-body-inner">
+                    <p>Medir regularmente —al menos dos veces por temporada— el nivel de disfrute, la motivación percibida y el clima motivacional del grupo. Usar instrumentos validados como el SMS (Sport Motivation Scale) o el PMCSQ (Perceived Motivational Climate in Sport Questionnaire) adaptados a la edad del nadador, y compartir los resultados con el club.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Level 4: Parámetros -->
+            <div class="lever-group reveal" data-level="4">
+              <div class="lever-header lh-4">
+                <span class="lever-badge">Nivel 4</span>
+                <div>
+                  <h3 class="lever-title">Parámetros y ajuste de variables</h3>
+                  <p class="lever-desc">El nivel de menor impacto sistémico pero más inmediato. Cambios directos sobre cargas y metodología que el entrenador puede aplicar hoy.</p>
+                </div>
+              </div>
+              <div class="accordion-card" data-acc>
+                <button class="accordion-header ah-4">
+                  <span class="acc-icon">🏋️</span>
+                  <span class="acc-title">Ajuste del volumen de entrenamiento por maduración</span>
+                  <span class="acc-target at-ent">Entrenador</span>
+                  <span class="acc-chevron">▾</span>
+                </button>
+                <div class="accordion-body">
+                  <div class="accordion-body-inner">
+                    <p>Adaptar la carga de entrenamiento a la maduración biológica del deportista, no solo a la edad cronológica. Evitar el sobreentrenamiento en fases críticas de crecimiento, que es uno de los factores de burnout más documentados en la natación juvenil y precede con frecuencia al abandono definitivo.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="accordion-card" data-acc>
+                <button class="accordion-header ah-4">
+                  <span class="acc-icon">🎮</span>
+                  <span class="acc-title">Variedad metodológica en las sesiones</span>
+                  <span class="acc-target at-ent">Entrenador</span>
+                  <span class="acc-chevron">▾</span>
+                </button>
+                <div class="accordion-body">
+                  <div class="accordion-body-inner">
+                    <p>Incorporar de forma sistemática elementos lúdicos, retos grupales y actividades variadas en las sesiones de entrenamiento. La monotonía percibida es citada de forma consistente como factor de abandono en estudios de natación juvenil. El cambio no requiere modificar los objetivos técnicos, solo diversificar el envoltorio metodológico.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
         </section>
 
         <section id="conclusiones" class="article-section">
           <div class="section-inner">
-            <span class="section-tag">08 · Conclusiones</span>
+            <span class="section-tag">06 · Conclusiones</span>
             <h2 class="section-title">Conclusiones</h2>
             <p class="placeholder-text">[Placeholder: Síntesis de los principales hallazgos y recomendaciones para entrenadores, clubes y federaciones.]</p>
             <p class="placeholder-text">[Placeholder: Líneas futuras de investigación y reflexión final.]</p>
@@ -1382,57 +1670,13 @@
         counterObserver.observe(el);
       });
 
-      // ── Ranking drag-and-drop ────────────────────────────────
-      var rankList = document.getElementById('ranking-list');
-      if (rankList) {
-        var dragSrc = null;
-
-        function updateRankNumbers() {
-          rankList.querySelectorAll('.rank-num').forEach(function (num, idx) {
-            num.textContent = String(idx + 1).padStart(2, '0');
-          });
-        }
-
-        rankList.querySelectorAll('.rank-item').forEach(function (item) {
-          item.addEventListener('dragstart', function (e) {
-            dragSrc = item;
-            item.classList.add('dragging');
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', '');
-          });
-          item.addEventListener('dragend', function () {
-            item.classList.remove('dragging');
-            rankList.querySelectorAll('.rank-item').forEach(function (i) {
-              i.classList.remove('drag-over', 'drop-above');
-            });
-            updateRankNumbers();
-          });
-          item.addEventListener('dragover', function (e) {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            if (dragSrc && dragSrc !== item) {
-              rankList.querySelectorAll('.rank-item').forEach(function (i) {
-                i.classList.remove('drag-over');
-              });
-              item.classList.add('drag-over');
-            }
-          });
-          item.addEventListener('dragleave', function () {
-            item.classList.remove('drag-over');
-          });
-          item.addEventListener('drop', function (e) {
-            e.preventDefault();
-            item.classList.remove('drag-over');
-            if (dragSrc && dragSrc !== item) {
-              var all = Array.from(rankList.querySelectorAll('.rank-item'));
-              var si  = all.indexOf(dragSrc);
-              var ti  = all.indexOf(item);
-              rankList.insertBefore(dragSrc, si < ti ? item.nextSibling : item);
-              updateRankNumbers();
-            }
-          });
+      // ── Accordion toggle ─────────────────────────────────────
+      document.querySelectorAll('[data-acc]').forEach(function (card) {
+        var btn = card.querySelector('.accordion-header');
+        btn.addEventListener('click', function () {
+          card.classList.toggle('open');
         });
-      }
+      });
 
       // ── Pathway SVG animation ────────────────────────────────
       var pathwaySvg = document.getElementById('pathway-svg');
