@@ -283,6 +283,158 @@
       font-size: 0.9rem;
     }
 
+    /* ── Scroll reveal ──────────────────────────────────────── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(28px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    .reveal.revealed {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .reveal-delay-1 { transition-delay: 0.12s; }
+    .reveal-delay-2 { transition-delay: 0.24s; }
+    .reveal-delay-3 { transition-delay: 0.36s; }
+
+    /* ── Body text ───────────────────────────────────────────── */
+    .body-text {
+      line-height: 1.8;
+      margin-bottom: 1.25rem;
+      color: var(--color-text);
+    }
+
+    /* ── Type selector ───────────────────────────────────────── */
+    .type-selector {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin: 2rem 0 1.75rem;
+    }
+    .type-btn {
+      padding: 0.45rem 1.1rem;
+      border-radius: 100px;
+      border: 2px solid var(--color-border);
+      background: var(--color-white);
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--color-muted);
+      cursor: pointer;
+      transition: border-color var(--transition), color var(--transition),
+                  background var(--transition), transform var(--transition);
+    }
+    .type-btn:hover {
+      border-color: var(--color-mid);
+      color: var(--color-deep);
+      transform: translateY(-1px);
+    }
+    .type-btn.active {
+      background: var(--color-deep);
+      border-color: var(--color-deep);
+      color: var(--color-white);
+    }
+
+    /* ── Definition cards ────────────────────────────────────── */
+    .def-cards {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.25rem;
+    }
+    .def-card {
+      background: var(--color-white);
+      border: 1px solid var(--color-border);
+      border-left: 4px solid var(--color-light);
+      border-radius: 8px;
+      padding: 1.5rem 1.5rem 1.25rem;
+      cursor: default;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.3s ease, box-shadow 0.3s ease,
+                  border-left-color 0.3s ease, opacity 0.35s ease;
+    }
+    .def-card::after {
+      content: '';
+      position: absolute;
+      top: 0; right: 0;
+      width: 80px; height: 80px;
+      background: radial-gradient(circle at top right, rgba(0,180,216,0.07), transparent 70%);
+      pointer-events: none;
+    }
+    .def-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 10px 28px rgba(0,119,182,0.13);
+      border-left-color: var(--color-deep);
+    }
+    .def-card.dimmed {
+      opacity: 0.25;
+      transform: none !important;
+      pointer-events: none;
+    }
+    .def-card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    .def-author-block { display: flex; flex-direction: column; gap: 0.1rem; }
+    .def-author {
+      font-family: var(--font-display);
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--color-deep);
+    }
+    .def-year {
+      font-size: 0.78rem;
+      color: var(--color-muted);
+      font-weight: 500;
+    }
+    .def-badge {
+      display: inline-block;
+      padding: 0.25rem 0.8rem;
+      border-radius: 100px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .def-badge--competitivo { background: rgba(0,119,182,0.1);  color: #005f8e; }
+    .def-badge--deportivo   { background: rgba(0,180,216,0.12); color: #007a99; }
+    .def-badge--ambos       { background: rgba(144,224,239,0.3); color: #005f8e; }
+
+    .def-quote {
+      font-size: 0.95rem;
+      line-height: 1.78;
+      color: var(--color-text);
+      margin: 0 0 0.75rem;
+      padding-left: 1rem;
+      border-left: 2px solid var(--color-light);
+      font-style: italic;
+    }
+
+    .def-detail {
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      transition: max-height 0.4s ease, opacity 0.35s ease;
+    }
+    .def-card:hover .def-detail {
+      max-height: 160px;
+      opacity: 1;
+    }
+    .def-detail-inner {
+      padding-top: 0.85rem;
+      border-top: 1px dashed var(--color-border);
+      font-size: 0.84rem;
+      color: var(--color-muted);
+      line-height: 1.65;
+    }
+    .def-detail-inner strong { color: var(--color-deep); font-weight: 600; }
+
     /* ── Stat grid ──────────────────────────────────────────── */
     .stat-grid {
       display: grid;
@@ -425,9 +577,100 @@
         <section id="el-problema" class="article-section">
           <div class="section-inner">
             <span class="section-tag">02 · El problema</span>
-            <h2 class="section-title">El problema</h2>
-            <p class="placeholder-text">[Placeholder: Descripción del fenómeno del abandono en el deporte de la natación: magnitud, tendencias y perfil de los afectados.]</p>
-            <p class="placeholder-text">[Placeholder: Impacto en clubes, federaciones, entrenadores y en el desarrollo deportivo a largo plazo.]</p>
+            <h2 class="section-title">El problema del problema</h2>
+
+            <p class="body-text reveal">
+              Antes de analizar el abandono en la natación es necesario detenerse en un paso previo
+              frecuentemente ignorado: ¿qué entendemos exactamente por «abandono»? La literatura
+              científica no ofrece una respuesta unívoca. Distintos autores han delimitado el concepto
+              de forma diferente según el contexto de práctica, el nivel competitivo y los mecanismos
+              de salida del deportista.
+            </p>
+            <p class="body-text reveal">
+              Esta falta de consenso dificulta la comparación entre estudios y la aplicación de
+              intervenciones preventivas eficaces. A continuación se presentan las tres
+              conceptualizaciones más citadas en el ámbito de la natación.
+            </p>
+
+            <!-- Type selector -->
+            <div class="type-selector reveal" role="group" aria-label="Filtrar definiciones por tipo de abandono">
+              <button class="type-btn active" data-filter="all">Todos</button>
+              <button class="type-btn" data-filter="competitivo">Abandono competitivo</button>
+              <button class="type-btn" data-filter="deportivo">Abandono deportivo</button>
+            </div>
+
+            <!-- Definition cards -->
+            <div class="def-cards" role="list" aria-live="polite">
+
+              <article class="def-card reveal reveal-delay-1" data-type="competitivo" role="listitem">
+                <div class="def-card-header">
+                  <div class="def-author-block">
+                    <span class="def-author">Brat</span>
+                    <span class="def-year">1981</span>
+                  </div>
+                  <span class="def-badge def-badge--competitivo">Abandono competitivo</span>
+                </div>
+                <blockquote class="def-quote">
+                  El abandono en el deporte de competición se entiende como la retirada voluntaria
+                  de un deportista de la práctica organizada y estructurada, con independencia de
+                  que continúe realizando actividad física de forma recreativa o informal.
+                </blockquote>
+                <div class="def-detail">
+                  <div class="def-detail-inner">
+                    <strong>Enfoque:</strong> Brat circunscribe el abandono al ámbito competitivo
+                    y estructurado, separándolo explícitamente de la práctica informal. Su modelo
+                    influyó en los estudios posteriores sobre natación federada y clubes de élite.
+                  </div>
+                </div>
+              </article>
+
+              <article class="def-card reveal reveal-delay-2" data-type="deportivo" role="listitem">
+                <div class="def-card-header">
+                  <div class="def-author-block">
+                    <span class="def-author">Robinson</span>
+                    <span class="def-year">1985</span>
+                  </div>
+                  <span class="def-badge def-badge--deportivo">Abandono deportivo</span>
+                </div>
+                <blockquote class="def-quote">
+                  El abandono deportivo implica la cesación total y permanente de la participación
+                  en una modalidad deportiva concreta, sin que el deportista transfiera su práctica
+                  a otra disciplina o contexto recreativo equivalente.
+                </blockquote>
+                <div class="def-detail">
+                  <div class="def-detail-inner">
+                    <strong>Enfoque:</strong> Robinson amplía el concepto al contemplar la
+                    totalidad de la trayectoria deportiva. Su definición es especialmente útil
+                    en estudios longitudinales de natación y para medir el abandono real frente
+                    al transferido.
+                  </div>
+                </div>
+              </article>
+
+              <article class="def-card reveal reveal-delay-3" data-type="competitivo" role="listitem">
+                <div class="def-card-header">
+                  <div class="def-author-block">
+                    <span class="def-author">Klint</span>
+                    <span class="def-year">1987</span>
+                  </div>
+                  <span class="def-badge def-badge--competitivo">Abandono competitivo</span>
+                </div>
+                <blockquote class="def-quote">
+                  El abandono debe entenderse como un proceso motivacional en el que el deportista,
+                  al no ver satisfechas sus metas de participación —ya sean de competencia percibida,
+                  afiliación o disfrute—, opta por retirarse de la práctica organizada.
+                </blockquote>
+                <div class="def-detail">
+                  <div class="def-detail-inner">
+                    <strong>Enfoque:</strong> Klint introduce la dimensión motivacional como eje
+                    del abandono. Su perspectiva resulta especialmente relevante en el deporte
+                    juvenil y en los programas de formación de natación, donde el disfrute
+                    es el principal factor de retención.
+                  </div>
+                </div>
+              </article>
+
+            </div><!-- /.def-cards -->
           </div>
         </section>
 
@@ -543,6 +786,40 @@
       });
 
       sections.forEach(function (sec) { observer.observe(sec); });
+
+      // ── Type filter ──────────────────────────────────────────
+      var typeButtons = document.querySelectorAll('.type-btn');
+      var defCards    = document.querySelectorAll('.def-card');
+
+      typeButtons.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var filter = btn.dataset.filter;
+
+          typeButtons.forEach(function (b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+
+          defCards.forEach(function (card) {
+            if (filter === 'all' || card.dataset.type === filter) {
+              card.classList.remove('dimmed');
+            } else {
+              card.classList.add('dimmed');
+            }
+          });
+        });
+      });
+
+      // ── Scroll reveal ────────────────────────────────────────
+      var revealEls = document.querySelectorAll('.reveal');
+      var revealObserver = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('revealed');
+            revealObserver.unobserve(entry.target);
+          }
+        });
+      }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+
+      revealEls.forEach(function (el) { revealObserver.observe(el); });
     })();
   </script>
 
