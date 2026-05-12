@@ -14,7 +14,7 @@ from flask import (
 from werkzeug.utils import secure_filename
 
 from parser import parse_inscriptions, parse_results
-from analyzer import analyze, seconds_to_time
+from analyzer import analyze, compute_copa_classification, seconds_to_time
 
 # ---------------------------------------------------------------------------
 # App setup
@@ -95,6 +95,19 @@ def init_db():
             result_time              REAL,
             points                   REAL,
             dsq                      INTEGER DEFAULT 0
+        );
+
+        CREATE TABLE IF NOT EXISTS copa_clubs (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            name       TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS copa_clubs_competitions (
+            copa_id        INTEGER NOT NULL REFERENCES copa_clubs(id) ON DELETE CASCADE,
+            competition_id INTEGER NOT NULL REFERENCES competitions(id) ON DELETE CASCADE,
+            division_name  TEXT DEFAULT '',
+            PRIMARY KEY (copa_id, competition_id)
         );
     """)
     db.commit()
@@ -181,7 +194,10 @@ def index():
     comps = db.execute(
         'SELECT * FROM competitions ORDER BY created_at DESC'
     ).fetchall()
-    return render_template('index.html', competitions=comps)
+    copas = db.execute(
+        'SELECT * FROM copa_clubs ORDER BY created_at DESC'
+    ).fetchall()
+    return render_template('index.html', competitions=comps, copas=copas)
 
 
 @app.route('/competition/new', methods=['GET', 'POST'])
@@ -360,6 +376,129 @@ def analysis_json(comp_id: int):
     # Remove non-serializable helper
     data.pop('seconds_to_time', None)
     return jsonify(data)
+
+
+# ---------------------------------------------------------------------------
+# Copa de Clubs helpers
+# ---------------------------------------------------------------------------
+
+def get_copa(copa_id: int):
+    return get_db().execute('SELECT * FROM copa_clubs WHERE id=?', (copa_id,)).fetchone()
+
+
+def _copa_competitions(db, copa_id: int) -> list[sqlite3.Row]:
+    return db.execute(
+        '''SELECT c.*, cc.division_name
+           FROM copa_clubs_competitions cc
+           JOIN competitions c ON c.id = cc.competition_id
+           WHERE cc.copa_id = ?
+           ORDER BY cc.division_name''',
+        (copa_id,)
+    ).fetchall()
+
+
+# ---------------------------------------------------------------------------
+# Copa de Clubs routes
+# ---------------------------------------------------------------------------
+
+@app.route('/copa/new', methods=['GET', 'POST'])
+def new_copa():
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        if not name:
+            flash('El nombre de la Copa es obligatorio.', 'danger')
+            return redirect(url_for('new_copa'))
+        db = get_db()
+        cur = db.execute(
+            'INSERT INTO copa_clubs (name, created_at) VALUES (?,?)',
+            (name, datetime.utcnow().isoformat())
+        )
+        db.commit()
+        flash('Copa de Clubs creada.', 'success')
+        return redirect(url_for('copa', copa_id=cur.lastrowid))
+    return render_template('copa_new.html')
+
+
+@app.route('/copa/<int:copa_id>')
+def copa(copa_id: int):
+    c = get_copa(copa_id)
+    if c is None:
+        flash('Copa no encontrada.', 'danger')
+        return redirect(url_for('index'))
+    db = get_db()
+    linked = _copa_competitions(db, copa_id)
+    linked_ids = {row['id'] for row in linked}
+    all_comps = db.execute('SELECT * FROM competitions ORDER BY name').fetchall()
+    available = [comp for comp in all_comps if comp['id'] not in linked_ids]
+    return render_template('copa.html', copa=c, linked=linked, available=available)
+
+
+@app.route('/copa/<int:copa_id>/add', methods=['POST'])
+def copa_add_competition(copa_id: int):
+    c = get_copa(copa_id)
+    if c is None:
+        flash('Copa no encontrada.', 'danger')
+        return redirect(url_for('index'))
+    comp_id = request.form.get('competition_id', type=int)
+    division_name = request.form.get('division_name', '').strip()
+    if not comp_id:
+        flash('Selecciona una competición.', 'danger')
+        return redirect(url_for('copa', copa_id=copa_id))
+    db = get_db()
+    db.execute(
+        'INSERT OR IGNORE INTO copa_clubs_competitions (copa_id, competition_id, division_name) VALUES (?,?,?)',
+        (copa_id, comp_id, division_name)
+    )
+    db.commit()
+    flash('División añadida.', 'success')
+    return redirect(url_for('copa', copa_id=copa_id))
+
+
+@app.route('/copa/<int:copa_id>/remove/<int:comp_id>', methods=['POST'])
+def copa_remove_competition(copa_id: int, comp_id: int):
+    db = get_db()
+    db.execute(
+        'DELETE FROM copa_clubs_competitions WHERE copa_id=? AND competition_id=?',
+        (copa_id, comp_id)
+    )
+    db.commit()
+    flash('División eliminada de la Copa.', 'success')
+    return redirect(url_for('copa', copa_id=copa_id))
+
+
+@app.route('/copa/<int:copa_id>/delete', methods=['POST'])
+def delete_copa(copa_id: int):
+    db = get_db()
+    db.execute('DELETE FROM copa_clubs WHERE id=?', (copa_id,))
+    db.commit()
+    flash('Copa eliminada.', 'success')
+    return redirect(url_for('index'))
+
+
+@app.route('/copa/<int:copa_id>/clasificacion')
+def copa_clasificacion(copa_id: int):
+    c = get_copa(copa_id)
+    if c is None:
+        flash('Copa no encontrada.', 'danger')
+        return redirect(url_for('index'))
+    db = get_db()
+    linked = _copa_competitions(db, copa_id)
+    if not linked:
+        flash('Añade al menos una división antes de ver la clasificación.', 'warning')
+        return redirect(url_for('copa', copa_id=copa_id))
+
+    all_results: list[dict] = []
+    for row in linked:
+        comp_results = _load_results(db, row['id'])
+        division = row['division_name'] or row['name']
+        for r in comp_results:
+            r['division'] = division
+            r['competition_name'] = row['name']
+        all_results.extend(comp_results)
+
+    data = compute_copa_classification(all_results)
+    return render_template('copa_clasificacion.html', copa=c, linked=linked, data=data,
+                           seconds_to_time=seconds_to_time)
 
 
 # ---------------------------------------------------------------------------

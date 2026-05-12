@@ -185,6 +185,96 @@ def _rec_to_dict(r: ImprovementRecord) -> dict:
     }
 
 
+# Points awarded to positions 1–16 in Copa de Clubs (FNCV scoring)
+COPA_POINTS = [19, 16, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
+
+
+def compute_copa_classification(all_results: list[dict]) -> dict:
+    """
+    Simulate a combined Copa de Clubs classification.
+
+    Takes results from multiple competitions (divisions) already tagged with
+    a 'division' key. For each event (gender + distance + stroke), merges all
+    valid finishers, sorts by result_time, and assigns Copa points:
+      1st → 19, 2nd → 16, 3rd → 14, 4th–16th → 13 down to 1, rest → 0.
+
+    Events are matched by (gender, distance, stroke) so different event
+    numbers across PDFs from different divisions are treated as the same event.
+
+    Returns:
+      {
+        'club_ranking': [{'club', 'total_points', 'events_scored', 'breakdown': {event_key: pts}}, ...],
+        'events': {
+          event_key: {
+            'gender', 'distance', 'stroke',
+            'finishers': [{'pos', 'swimmer_name', 'club', 'result_time', 'division', 'copa_points'}, ...]
+          }
+        }
+      }
+    """
+    # Group finishers by (gender, distance, stroke)
+    event_groups: dict[tuple, list[dict]] = {}
+    for r in all_results:
+        if r.get('dsq') or r.get('result_time') is None:
+            continue
+        key = (r['gender'], r['distance'], r['stroke'])
+        event_groups.setdefault(key, []).append(r)
+
+    club_points: dict[str, dict] = {}  # club → {total, events_scored, breakdown}
+    events_out: dict[str, dict] = {}
+
+    for (gender, distance, stroke), finishers in sorted(event_groups.items()):
+        # Sort by result_time ascending (fastest first); ties share the same position
+        finishers_sorted = sorted(finishers, key=lambda r: r['result_time'])
+
+        event_key = f'{gender}_{distance}m_{stroke}'
+        annotated = []
+        pos = 0
+        prev_time = None
+        prev_copa_pts = 0
+        for i, r in enumerate(finishers_sorted):
+            if r['result_time'] != prev_time:
+                pos = i + 1
+                prev_copa_pts = COPA_POINTS[pos - 1] if pos <= len(COPA_POINTS) else 0
+                prev_time = r['result_time']
+            copa_pts = prev_copa_pts
+
+            annotated.append({
+                'pos': pos,
+                'swimmer_name': r['swimmer_name'],
+                'club': r['club'],
+                'year': r.get('year', ''),
+                'result_time': r['result_time'],
+                'division': r.get('division', ''),
+                'copa_points': copa_pts,
+            })
+
+            if copa_pts > 0 and r['club']:
+                entry = club_points.setdefault(r['club'], {'total': 0, 'events_scored': 0, 'breakdown': {}})
+                entry['total'] += copa_pts
+                entry['events_scored'] += 1
+                entry['breakdown'][event_key] = entry['breakdown'].get(event_key, 0) + copa_pts
+
+        events_out[event_key] = {
+            'gender': gender,
+            'distance': distance,
+            'stroke': stroke,
+            'finishers': annotated,
+        }
+
+    club_ranking = sorted(
+        [{'club': club, **data} for club, data in club_points.items()],
+        key=lambda x: (-x['total'], x['club'])
+    )
+    for i, row in enumerate(club_ranking):
+        row['rank'] = i + 1
+
+    return {
+        'club_ranking': club_ranking,
+        'events': events_out,
+    }
+
+
 def seconds_to_time(secs: float) -> str:
     """Format float seconds as M:SS.cc string."""
     if secs is None:

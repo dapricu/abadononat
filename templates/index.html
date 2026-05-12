@@ -1,10 +1,49 @@
 {% extends 'base.html' %}
-{% block title %}Competiciones – Análisis Natación{% endblock %}
+{% block title %}Inicio – Análisis Natación{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h1 class="h3 mb-0">Competiciones</h1>
-  <a href="{{ url_for('new_competition') }}" class="btn btn-primary">
+
+<!-- Copa de Clubs -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2 class="h4 mb-0"><i class="bi bi-trophy-fill text-warning"></i> Copa de Clubs</h2>
+  <a href="{{ url_for('new_copa') }}" class="btn btn-warning btn-sm">
+    <i class="bi bi-plus-lg"></i> Nueva Copa
+  </a>
+</div>
+
+{% if copas %}
+<div class="row row-cols-1 row-cols-md-3 g-3 mb-5">
+  {% for copa in copas %}
+  <div class="col">
+    <div class="card h-100 border-warning shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">{{ copa.name }}</h5>
+      </div>
+      <div class="card-footer d-flex gap-2">
+        <a href="{{ url_for('copa', copa_id=copa.id) }}" class="btn btn-sm btn-outline-warning flex-fill">
+          <i class="bi bi-folder2-open"></i> Gestionar
+        </a>
+        <a href="{{ url_for('copa_clasificacion', copa_id=copa.id) }}" class="btn btn-sm btn-warning flex-fill">
+          <i class="bi bi-bar-chart-line"></i> Clasificación
+        </a>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-light border mb-5 text-muted small">
+  No hay Copas creadas. Crea una Copa y añade las competiciones de cada división para
+  obtener la clasificación conjunta de clubs.
+</div>
+{% endif %}
+
+<hr class="mb-4">
+
+<!-- Competitions -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2 class="h4 mb-0"><i class="bi bi-water text-primary"></i> Competiciones</h2>
+  <a href="{{ url_for('new_competition') }}" class="btn btn-primary btn-sm">
     <i class="bi bi-plus-lg"></i> Nueva competición
   </a>
 </div>
