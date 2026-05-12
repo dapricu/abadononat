@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% block title %}{{ comp.name }} – Análisis Natación{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Competiciones</a></li>
+    <li class="breadcrumb-item active">{{ comp.name }}</li>
+  </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <h1 class="h3 mb-1">{{ comp.name }}</h1>
+    <div class="text-muted small">
+      {% if comp.date %}<i class="bi bi-calendar3"></i> {{ comp.date }} &nbsp;{% endif %}
+      {% if comp.pool_type %}
+        <span class="badge bg-info text-dark"><i class="bi bi-rulers"></i> Piscina {{ comp.pool_type }}</span>
+      {% else %}
+        <span class="badge bg-warning text-dark">Tipo de piscina no establecido</span>
+      {% endif %}
+    </div>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('analysis', comp_id=comp.id) }}" class="btn btn-success">
+      <i class="bi bi-bar-chart-line"></i> Ver análisis
+    </a>
+    <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editModal">
+      <i class="bi bi-pencil"></i> Editar
+    </button>
+  </div>
+</div>
+
+<!-- Upload cards -->
+<div class="row g-3 mb-4">
+  <!-- Inscriptions -->
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-file-earmark-text"></i> Inscripciones
+        {% if n_entries > 0 %}
+          <span class="badge bg-success ms-2">{{ n_entries }} registros</span>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        <p class="card-text text-muted small">
+          PDF de inscripciones exportado desde la web de la federación (RFEN/FNCV).
+          Contiene las marcas de inscripción (M. Ponderada) de cada nadador.
+        </p>
+        <form method="post" action="{{ url_for('upload_inscriptions', comp_id=comp.id) }}"
+              enctype="multipart/form-data">
+          <div class="input-group">
+            <input type="file" name="file" accept=".pdf" class="form-control" required>
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-upload"></i> Subir
+            </button>
+          </div>
+        </form>
+        {% if n_entries > 0 %}
+          <div class="mt-2 text-success small"><i class="bi bi-check-circle"></i> Archivo cargado</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-trophy"></i> Resultados
+        {% if n_results > 0 %}
+          <span class="badge bg-success ms-2">{{ n_results }} registros</span>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        <p class="card-text text-muted small">
+          PDF de resultados de la competición. Se usará también para detectar
+          automáticamente el tipo de piscina si no se ha especificado.
+        </p>
+        <form method="post" action="{{ url_for('upload_results', comp_id=comp.id) }}"
+              enctype="multipart/form-data">
+          <div class="input-group">
+            <input type="file" name="file" accept=".pdf" class="form-control" required>
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-upload"></i> Subir
+            </button>
+          </div>
+        </form>
+        {% if n_results > 0 %}
+          <div class="mt-2 text-success small"><i class="bi bi-check-circle"></i> Archivo cargado</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if n_entries > 0 and n_results > 0 %}
+<div class="text-center">
+  <a href="{{ url_for('analysis', comp_id=comp.id) }}" class="btn btn-success btn-lg">
+    <i class="bi bi-bar-chart-line"></i> Analizar resultados
+  </a>
+</div>
+{% endif %}
+
+<!-- Delete -->
+<div class="mt-5 pt-3 border-top">
+  <form method="post" action="{{ url_for('delete_competition', comp_id=comp.id) }}"
+        onsubmit="return confirm('¿Eliminar la competición y todos sus datos?')">
+    <button type="submit" class="btn btn-outline-danger btn-sm">
+      <i class="bi bi-trash"></i> Eliminar competición
+    </button>
+  </form>
+</div>
+
+<!-- Edit modal -->
+<div class="modal fade" id="editModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{{ url_for('edit_competition', comp_id=comp.id) }}">
+        <div class="modal-header">
+          <h5 class="modal-title">Editar competición</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nombre</label>
+            <input type="text" name="name" class="form-control" value="{{ comp.name }}" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Fecha</label>
+            <input type="date" name="date" class="form-control" value="{{ comp.date or '' }}">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Tipo de piscina</label>
+            <select name="pool_type" class="form-select">
+              <option value="" {% if not comp.pool_type %}selected{% endif %}>Desconocido</option>
+              <option value="25m" {% if comp.pool_type == '25m' %}selected{% endif %}>25 metros</option>
+              <option value="50m" {% if comp.pool_type == '50m' %}selected{% endif %}>50 metros</option>
+            </select>
+            <div class="form-text">
+              Solo se compararán inscripciones del mismo tipo de piscina.
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

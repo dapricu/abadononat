@@ -1,0 +1,31 @@
+body {
+  background-color: #f8f9fa;
+}
+
+.navbar-brand {
+  letter-spacing: 0.5px;
+}
+
+.card {
+  border-radius: 0.5rem;
+}
+
+.display-6 {
+  font-size: 2rem;
+}
+
+.progress {
+  border-radius: 0.25rem;
+}
+
+.table th {
+  white-space: nowrap;
+}
+
+#recordsTable td, #recordsTable th {
+  font-size: 0.85rem;
+}
+
+.tab-pane canvas {
+  max-height: 300px;
+}

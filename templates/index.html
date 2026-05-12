@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block title %}Competiciones – Análisis Natación{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">Competiciones</h1>
+  <a href="{{ url_for('new_competition') }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg"></i> Nueva competición
+  </a>
+</div>
+
+{% if competitions %}
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+  {% for comp in competitions %}
+  <div class="col">
+    <div class="card h-100 shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">{{ comp.name }}</h5>
+        <p class="card-text text-muted small">
+          {% if comp.date %}<i class="bi bi-calendar3"></i> {{ comp.date }}<br>{% endif %}
+          {% if comp.pool_type %}<i class="bi bi-rulers"></i> Piscina {{ comp.pool_type }}{% endif %}
+        </p>
+      </div>
+      <div class="card-footer d-flex gap-2">
+        <a href="{{ url_for('competition', comp_id=comp.id) }}" class="btn btn-sm btn-outline-primary flex-fill">
+          <i class="bi bi-folder2-open"></i> Abrir
+        </a>
+        <a href="{{ url_for('analysis', comp_id=comp.id) }}" class="btn btn-sm btn-outline-success flex-fill">
+          <i class="bi bi-bar-chart-line"></i> Análisis
+        </a>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">
+  <i class="bi bi-water display-1"></i>
+  <p class="mt-3">No hay competiciones todavía. ¡Crea la primera!</p>
+</div>
+{% endif %}
+{% endblock %}
