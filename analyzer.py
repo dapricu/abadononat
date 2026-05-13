@@ -351,6 +351,8 @@ def _venue_suspicion(t_stat: float, n: int) -> str:
 
 # Points awarded to positions 1–16 in Copa de Clubs (FNCV scoring)
 COPA_POINTS = [19, 16, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
+# Relay events score double
+COPA_POINTS_RELAY = [p * 2 for p in COPA_POINTS]
 
 
 def compute_copa_classification(all_results: list[dict]) -> dict:
@@ -376,22 +378,24 @@ def compute_copa_classification(all_results: list[dict]) -> dict:
         }
       }
     """
-    # Group finishers by (gender, distance, stroke)
+    # Group finishers by (gender, distance, stroke, relay)
     event_groups: dict[tuple, list[dict]] = {}
     for r in all_results:
         if r.get('dsq') or r.get('result_time') is None:
             continue
-        key = (r['gender'], r['distance'], r['stroke'])
+        key = (r['gender'], r['distance'], r['stroke'], bool(r.get('relay', False)))
         event_groups.setdefault(key, []).append(r)
 
     club_points: dict[str, dict] = {}  # club → {total, events_scored, breakdown}
     events_out: dict[str, dict] = {}
 
-    for (gender, distance, stroke), finishers in sorted(event_groups.items()):
+    for (gender, distance, stroke, _relay_flag), finishers in sorted(event_groups.items()):
         # Sort by result_time ascending (fastest first); ties share the same position
         finishers_sorted = sorted(finishers, key=lambda r: r['result_time'])
 
-        event_key = f'{gender}_{distance}m_{stroke}'
+        is_relay = bool(finishers_sorted[0].get('relay', False))
+        pts_table = COPA_POINTS_RELAY if is_relay else COPA_POINTS
+        event_key = f'{gender}_{distance}m_{stroke}{"_relay" if is_relay else ""}'
         annotated = []
         pos = 0
         prev_time = None
@@ -399,7 +403,7 @@ def compute_copa_classification(all_results: list[dict]) -> dict:
         for i, r in enumerate(finishers_sorted):
             if r['result_time'] != prev_time:
                 pos = i + 1
-                prev_copa_pts = COPA_POINTS[pos - 1] if pos <= len(COPA_POINTS) else 0
+                prev_copa_pts = pts_table[pos - 1] if pos <= len(pts_table) else 0
                 prev_time = r['result_time']
             copa_pts = prev_copa_pts
             club = (r['club'] or '').rstrip('- ').strip()

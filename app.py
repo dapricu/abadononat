@@ -72,7 +72,8 @@ def init_db():
             number         INTEGER,
             gender         TEXT,
             distance       INTEGER,
-            stroke         TEXT
+            stroke         TEXT,
+            relay          INTEGER DEFAULT 0
         );
 
         CREATE TABLE IF NOT EXISTS entries (
@@ -128,6 +129,10 @@ def _migrate(db: sqlite3.Connection):
     # Strip trailing dashes/spaces from club names left by earlier parser versions
     db.execute("UPDATE results SET club = TRIM(RTRIM(club, '- ')) WHERE club GLOB '*-'")
     db.execute("UPDATE entries  SET club = TRIM(RTRIM(club, '- ')) WHERE club GLOB '*-'")
+    # Add relay column to events if missing
+    existing_ev = {row[1] for row in db.execute('PRAGMA table_info(events)').fetchall()}
+    if 'relay' not in existing_ev:
+        db.execute("ALTER TABLE events ADD COLUMN relay INTEGER DEFAULT 0")
 
 
 def allowed_file(filename: str) -> bool:
@@ -152,8 +157,9 @@ def _get_or_create_event(db, competition_id: int, ev: dict) -> int:
     if row:
         return row['id']
     cur = db.execute(
-        'INSERT INTO events (competition_id, number, gender, distance, stroke) VALUES (?,?,?,?,?)',
-        (competition_id, ev['event_number'], ev['gender'], ev['distance'], ev['stroke'])
+        'INSERT INTO events (competition_id, number, gender, distance, stroke, relay) VALUES (?,?,?,?,?,?)',
+        (competition_id, ev['event_number'], ev['gender'], ev['distance'], ev['stroke'],
+         int(ev.get('relay', False)))
     )
     return cur.lastrowid
 
@@ -184,7 +190,7 @@ def _store_results(db, competition_id: int, results: list[dict]):
 
 def _load_entries(db, competition_id: int) -> list[dict]:
     rows = db.execute(
-        '''SELECT e.*, ev.number as event_number, ev.gender, ev.distance, ev.stroke
+        '''SELECT e.*, ev.number as event_number, ev.gender, ev.distance, ev.stroke, ev.relay
            FROM entries e JOIN events ev ON e.event_id = ev.id
            WHERE ev.competition_id = ?''', (competition_id,)
     ).fetchall()
@@ -193,7 +199,7 @@ def _load_entries(db, competition_id: int) -> list[dict]:
 
 def _load_results(db, competition_id: int) -> list[dict]:
     rows = db.execute(
-        '''SELECT r.*, ev.number as event_number, ev.gender, ev.distance, ev.stroke
+        '''SELECT r.*, ev.number as event_number, ev.gender, ev.distance, ev.stroke, ev.relay
            FROM results r JOIN events ev ON r.event_id = ev.id
            WHERE ev.competition_id = ?''', (competition_id,)
     ).fetchall()

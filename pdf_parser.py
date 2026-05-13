@@ -19,7 +19,9 @@ INS_COL = {
     'club_end':    343,   # club: 233 <= X < 343 (may overflow into next cols)
     'pisc_start':  377,   # pool type (25m/50m): 377 <= X < 410
     'pisc_end':    410,
-    'mpond_start': 410,   # M.Ponderada: 410 <= X < 448  (data starts at ~414)
+    # M.Ponderada starts at ~414 for short times, but the leading digit of
+    # two-digit minute times (e.g. "15:50.52") can sit at X≈407, so use 405.
+    'mpond_start': 405,
     'mpond_end':   448,
 }
 
@@ -31,11 +33,21 @@ POOL_RE = re.compile(r'(25|50)\s*m', re.IGNORECASE)
 # Adjust if your results PDF uses a different page width/layout.
 RES_TIEMPO_X = 420
 
-# Matches FNCV/Splash Meet Manager event headers, e.g.:
-#   "Prueba 1Masc., 200m LibreAbs."   (main page header, fields concatenated)
-#   "Prueba 2, Fem., 400m Estilos"    (continuation header at top of new page)
+# Matches individual-event headers, e.g.:
+#   "Prueba 1Masc., 200m LibreAbs."
+#   "Prueba 2, Fem., 400m Estilos"
 EVENT_HEADER_RE = re.compile(
     r'Prueba\s+(\d+)[^A-Za-z]*(Masc\.|Fem\.|Mixto)[,.]?\s*(\d+)\s*m\s*'
+    r'(Libre|Espalda|Mariposa|Braza|Estilos)',
+    re.IGNORECASE,
+)
+
+# Matches relay event headers, e.g.:
+#   "Prueba 5 Masc., 4x100m Libre"
+#   "Prueba 6Fem., 4 x 50m Estilos"
+RELAY_HEADER_RE = re.compile(
+    r'Prueba\s+(\d+)[^A-Za-z]*(Masc\.|Fem\.|Mixto)[,.]?\s*'
+    r'(\d+)\s*[xX]\s*(\d+)\s*m\s*'
     r'(Libre|Espalda|Mariposa|Braza|Estilos)',
     re.IGNORECASE,
 )
@@ -86,6 +98,45 @@ def _chars_to_text(chars) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Event header parsing
+# ---------------------------------------------------------------------------
+
+def _parse_event_header(line: str) -> dict | None:
+    """
+    Return an event dict if the line is an event header, else None.
+    Relay events (4x100m) are detected first; relay=True is set on them
+    and distance is stored as total metres (legs × leg_distance).
+    """
+    # Relay: "Prueba N Gender, LxDm Stroke"
+    m = RELAY_HEADER_RE.search(line)
+    if m:
+        gender_raw = m.group(2).upper()
+        gender = 'M' if 'MASC' in gender_raw else ('F' if 'FEM' in gender_raw else 'X')
+        legs = int(m.group(3))
+        leg_dist = int(m.group(4))
+        return {
+            'event_number': int(m.group(1)),
+            'gender': gender,
+            'distance': legs * leg_dist,
+            'stroke': _normalize_stroke(m.group(5).strip().upper()),
+            'relay': True,
+        }
+    # Individual: "Prueba N Gender, Dm Stroke"
+    m = EVENT_HEADER_RE.search(line)
+    if m:
+        gender_raw = m.group(2).upper()
+        gender = 'M' if 'MASC' in gender_raw else ('F' if 'FEM' in gender_raw else 'X')
+        return {
+            'event_number': int(m.group(1)),
+            'gender': gender,
+            'distance': int(m.group(3)),
+            'stroke': _normalize_stroke(m.group(4).strip().upper()),
+            'relay': False,
+        }
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Inscriptions parser
 # ---------------------------------------------------------------------------
 
@@ -117,18 +168,10 @@ def parse_inscriptions(pdf_path: str) -> list[dict]:
                 if not line:
                     continue
 
-                # Detect event header line
-                m = EVENT_HEADER_RE.search(line)
-                if m:
-                    gender_raw = m.group(2).upper()
-                    gender = 'M' if 'MASC' in gender_raw else ('F' if 'FEM' in gender_raw else 'X')
-                    stroke_raw = m.group(4).strip().upper()
-                    current_event = {
-                        'event_number': int(m.group(1)),
-                        'gender': gender,
-                        'distance': int(m.group(3)),
-                        'stroke': _normalize_stroke(stroke_raw),
-                    }
+                # Detect event header line (relay first, then individual)
+                ev = _parse_event_header(line)
+                if ev is not None:
+                    current_event = ev
                     continue
 
                 if current_event is None:
@@ -245,18 +288,10 @@ def parse_results(pdf_path: str) -> tuple[list[dict], str]:
                 if not line:
                     continue
 
-                # Detect event header
-                m = EVENT_HEADER_RE.search(line)
-                if m:
-                    gender_raw = m.group(2).upper()
-                    gender = 'M' if 'MASC' in gender_raw else ('F' if 'FEM' in gender_raw else 'X')
-                    stroke_raw = m.group(4).strip().upper()
-                    current_event = {
-                        'event_number': int(m.group(1)),
-                        'gender': gender,
-                        'distance': int(m.group(3)),
-                        'stroke': _normalize_stroke(stroke_raw),
-                    }
+                # Detect event header (relay first, then individual)
+                ev = _parse_event_header(line)
+                if ev is not None:
+                    current_event = ev
                     continue
 
                 if current_event is None:
