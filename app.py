@@ -427,6 +427,56 @@ def pool_ranking():
                            seconds_to_time=seconds_to_time)
 
 
+@app.route('/debug-pdf', methods=['GET', 'POST'])
+def debug_pdf():
+    """Diagnostic page: upload any PDF and inspect what pdfplumber extracts."""
+    if request.method == 'GET':
+        return render_template('debug_pdf.html')
+
+    f = request.files.get('file')
+    if not f:
+        return jsonify({'error': 'No file'}), 400
+
+    import tempfile, pdfplumber, re as _re
+    with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
+        f.save(tmp.name)
+        tmp_path = tmp.name
+
+    pages_out = []
+    with pdfplumber.open(tmp_path) as pdf:
+        for page_num, page in enumerate(pdf.pages[:5]):  # first 5 pages
+            # Full text (simple)
+            full_text = page.extract_text() or ''
+
+            # Character-level rows
+            from pdf_parser import _group_chars_by_row, _chars_to_text, EVENT_HEADER_RE
+            rows = _group_chars_by_row(page)
+            char_rows = []
+            for y, chars in sorted(rows.items()):
+                line = _chars_to_text(chars).strip()
+                if not line:
+                    continue
+                fonts = list({c.get('fontname', '') for c in chars})
+                bold_text = _chars_to_text([c for c in chars if 'Bold' in c.get('fontname', '')])
+                is_event = bool(EVENT_HEADER_RE.search(line))
+                char_rows.append({
+                    'y': round(y, 1),
+                    'text': line[:120],
+                    'fonts': fonts[:4],
+                    'bold': bold_text[:40],
+                    'is_event_header': is_event,
+                })
+
+            pages_out.append({
+                'page': page_num + 1,
+                'full_text_sample': full_text[:800],
+                'char_rows': char_rows[:60],
+            })
+
+    os.unlink(tmp_path)
+    return jsonify(pages_out)
+
+
 # ---------------------------------------------------------------------------
 # Copa de Clubs helpers
 # ---------------------------------------------------------------------------

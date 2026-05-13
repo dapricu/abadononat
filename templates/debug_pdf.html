@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% block title %}Diagnóstico PDF{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Diagnóstico PDF</h1>
+<p class="text-muted">Sube un PDF de inscripciones o resultados para ver exactamente qué texto extrae el parser.</p>
+
+<form id="uploadForm" class="mb-4">
+  <div class="input-group" style="max-width:500px">
+    <input type="file" id="pdfFile" accept=".pdf" class="form-control" required>
+    <button type="submit" class="btn btn-primary">Analizar</button>
+  </div>
+</form>
+
+<div id="status" class="text-muted small mb-3"></div>
+<div id="output"></div>
+
+<script>
+document.getElementById('uploadForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const file = document.getElementById('pdfFile').files[0];
+  if (!file) return;
+  document.getElementById('status').textContent = 'Analizando…';
+  document.getElementById('output').innerHTML = '';
+
+  const fd = new FormData();
+  fd.append('file', file);
+  const res = await fetch('/debug-pdf', { method: 'POST', body: fd });
+  const data = await res.json();
+  document.getElementById('status').textContent = '';
+
+  if (data.error) {
+    document.getElementById('output').innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+    return;
+  }
+
+  let html = '';
+  for (const page of data) {
+    html += `<h5>Página ${page.page}</h5>`;
+    html += `<details class="mb-2"><summary class="text-muted small">Texto plano (primeros 800 chars)</summary>
+      <pre class="bg-light p-2 small" style="white-space:pre-wrap">${esc(page.full_text_sample)}</pre></details>`;
+
+    html += `<div class="table-responsive mb-4"><table class="table table-xs table-sm table-bordered small">
+      <thead class="table-dark"><tr>
+        <th>Y</th><th>Texto extraído</th><th>Fonts</th><th>Bold</th><th>¿Cabecera prueba?</th>
+      </tr></thead><tbody>`;
+    for (const row of page.char_rows) {
+      const rowClass = row.is_event_header ? 'table-success fw-semibold' : '';
+      html += `<tr class="${rowClass}">
+        <td>${row.y}</td>
+        <td><code>${esc(row.text)}</code></td>
+        <td class="text-muted">${esc(row.fonts.join(', '))}</td>
+        <td class="text-primary">${esc(row.bold)}</td>
+        <td class="text-center">${row.is_event_header ? '✅' : ''}</td>
+      </tr>`;
+    }
+    html += '</tbody></table></div>';
+  }
+  document.getElementById('output').innerHTML = html;
+});
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+{% endblock %}
