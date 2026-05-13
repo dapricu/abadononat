@@ -17,16 +17,21 @@ INS_COL = {
     'ano_start':   213,   # year: 213 <= X < 233
     'ano_end':     233,
     'club_end':    343,   # club: 233 <= X < 343 (may overflow into next cols)
-    'pisc_start':  377,   # pool type (25m/50m): 377 <= X < 408
-    'pisc_end':    408,
-    'mpond_start': 408,   # M.Ponderada: 408 <= X < 446
-    'mpond_end':   446,
+    'pisc_start':  377,   # pool type (25m/50m): 377 <= X < 410
+    'pisc_end':    410,
+    'mpond_start': 410,   # M.Ponderada: 410 <= X < 448  (data starts at ~414)
+    'mpond_end':   448,
 }
 
 TIME_RE = re.compile(r'(\d{1,2}:\d{2}\.\d{2}|\d{2}\.\d{2})')
 POOL_RE = re.compile(r'(25|50)\s*m', re.IGNORECASE)
+
+# Matches FNCV/Splash Meet Manager event headers, e.g.:
+#   "Prueba 1Masc., 200m LibreAbs."   (main page header, fields concatenated)
+#   "Prueba 2, Fem., 400m Estilos"    (continuation header at top of new page)
 EVENT_HEADER_RE = re.compile(
-    r'(\d+)\s*[–\-]\s*(MASCULINO|FEMENINO|MIXTO)\s+(\d+)\s*m\s+(\w[\w\s]+)',
+    r'Prueba\s+(\d+)[^A-Za-z]*(Masc\.|Fem\.|Mixto)[,.]?\s*(\d+)\s*m\s*'
+    r'(Libre|Espalda|Mariposa|Braza|Estilos)',
     re.IGNORECASE,
 )
 
