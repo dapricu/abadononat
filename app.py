@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Flask web application for swimming competition analysis.
 """

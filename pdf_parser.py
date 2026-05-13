@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 PDF parser for Spanish swimming competition files (FNCV/RFEN format).
 
