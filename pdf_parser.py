@@ -28,24 +28,34 @@ TIME_RE = re.compile(r'(\d{1,2}:\d{2}\.\d{2}|\d{2}\.\d{2})')
 POOL_RE = re.compile(r'(25|50)\s*m', re.IGNORECASE)
 
 # X threshold for the Tiempo (result time) column in FNCV results PDFs.
-# The column sits at the far right; chars with x0 >= this value belong to it.
-# Adjust if your results PDF uses a different page width/layout.
 RES_TIEMPO_X = 420
+
+# X-position column thresholds for results rows (Splash Meet Manager FNCV format).
+# Adjust if your PDFs use a different page width or margin.
+RES_COL = {
+    'name_end':  215,   # position + name: X < 215
+    'year_end':  240,   # year: 215 <= X < 240
+    'club_end':  390,   # club: 240 <= X < 390  (qualifier tokens AN/AC/MN also in this range)
+}
+
+# Lines in results PDFs that carry only split times, not swimmer results.
+# E.g. "50m: 31.77  150m: 1:48.23 ..."  or  "100m: 1:09.08  200m: 2:26.20 ..."
+SPLIT_ROW_RE = re.compile(r'^\d+\s*m\s*:', re.IGNORECASE)
 
 # Matches individual-event headers, e.g.:
 #   "Prueba 1Masc., 200m LibreAbs."
-#   "Prueba 2, Fem., 400m Estilos"
+#   "Prueba 2 Femenino, 400m Libre"
 EVENT_HEADER_RE = re.compile(
-    r'Prueba\s+(\d+)[^A-Za-z]*(Masc\.|Fem\.|Mixto)[,.]?\s*(\d+)\s*m\s*'
+    r'Prueba\s+(\d+)[^A-Za-z]*(Masc\.?|Masculino|Fem\.?|Femenino|Mixto)[,.]?\s*(\d+)\s*m\s*'
     r'(Libre|Espalda|Mariposa|Braza|Estilos)',
     re.IGNORECASE,
 )
 
 # Matches relay event headers, e.g.:
 #   "Prueba 5 Masc., 4x100m Libre"
-#   "Prueba 6Fem., 4 x 50m Estilos"
+#   "Prueba 6 Femenino, 4 x 50m Estilos"
 RELAY_HEADER_RE = re.compile(
-    r'Prueba\s+(\d+)[^A-Za-z]*(Masc\.|Fem\.|Mixto)[,.]?\s*'
+    r'Prueba\s+(\d+)[^A-Za-z]*(Masc\.?|Masculino|Fem\.?|Femenino|Mixto)[,.]?\s*'
     r'(\d+)\s*[xX]\s*(\d+)\s*m\s*'
     r'(Libre|Espalda|Mariposa|Braza|Estilos)',
     re.IGNORECASE,
@@ -311,6 +321,10 @@ def parse_results(pdf_path: str) -> tuple[list[dict], str]:
                 if current_event is None:
                     continue
 
+                # Skip split-time rows ("50m: 31.77  150m: 1:48.23 ...")
+                if SPLIT_ROW_RE.match(line):
+                    continue
+
                 result = _parse_result_row(chars, current_event)
                 if result:
                     results.append(result)
@@ -320,76 +334,79 @@ def parse_results(pdf_path: str) -> tuple[list[dict], str]:
 
 def _parse_result_row(chars: list, event: dict) -> dict | None:
     """
-    Use font-based separation:
-      Bold chars   → result time (e.g. "1:47.15")
-      Regular chars → position, name, year, club, points, splits
+    Parse one result row using X-position column splitting for name/year/club
+    (same technique as inscriptions) and font-based detection for the result time.
+
+    Columns (approximate X thresholds defined in RES_COL):
+      X < name_end          → position number + swimmer name
+      name_end <= X < year_end → birth year (2-digit)
+      year_end <= X < club_end → club name (qualifier tokens like AN/AC may appear here too)
+      X >= RES_TIEMPO_X (bold) → result time
     """
     bold_chars    = [c for c in chars if 'Bold' in c.get('fontname', '')]
     regular_chars = [c for c in chars if 'Bold' not in c.get('fontname', '')]
 
-    bold_text = _chars_to_text(bold_chars).strip()
-    reg_text  = _chars_to_text(regular_chars).strip()
-
-    # Result time: search in order of reliability.
-    # 1) Bold chars in the Tiempo column (rightmost, avoids picking up split times).
-    # 2) Any bold chars (for events where no split times are bold).
-    # 3) Any chars in the Tiempo column (handles 800m/1500m where the time is
-    #    colored but not bold, or where pdfplumber reports a non-Bold fontname).
+    # ---- Result time (keep three-tier detection) ----
     right_bold = [c for c in bold_chars if c['x0'] >= RES_TIEMPO_X]
     tm = TIME_RE.search(_chars_to_text(right_bold))
     if not tm:
-        tm = TIME_RE.search(bold_text)
+        tm = TIME_RE.search(_chars_to_text(bold_chars))
     if not tm:
         right_all = [c for c in chars if c['x0'] >= RES_TIEMPO_X]
         tm = TIME_RE.search(_chars_to_text(right_all))
     result_time = time_to_seconds(tm.group(0)) if tm else None
 
-    # DSQ / DNS rows
-    dsq = bool(re.search(r'\b(DSQ|DNS|DQ|NP|AB)\b', reg_text + bold_text, re.IGNORECASE))
+    # ---- DSQ / DNS ----
+    full_text = _chars_to_text(chars).strip()
+    dsq = bool(re.search(r'\b(DSQ|DNS|DQ|NP|AB)\b', full_text, re.IGNORECASE))
 
-    if not reg_text:
+    # ---- X-based column split ----
+    pos_name_chars = [c for c in regular_chars if c['x0'] < RES_COL['name_end']]
+    year_chars     = [c for c in regular_chars if RES_COL['name_end'] <= c['x0'] < RES_COL['year_end']]
+    club_chars     = [c for c in regular_chars if RES_COL['year_end'] <= c['x0'] < RES_COL['club_end']]
+
+    pos_name_text = _chars_to_text(pos_name_chars).strip()
+    if not pos_name_text:
         return None
 
-    # reg_text format: "<pos>.<NAME, Firstname><year><club><points><splits...>"
-    # Position: leading digits before first '.'
-    pos_match = re.match(r'^(\d+)\.', reg_text)
-    position = int(pos_match.group(1)) if pos_match else None
+    # Position: leading digits followed by '.'
+    pos_match = re.match(r'^(\d+)\.', pos_name_text)
+    position  = int(pos_match.group(1)) if pos_match else None
 
-    # After position, the rest: "NAME, Firstname<year><club><points>"
-    after_pos = reg_text[pos_match.end():].strip() if pos_match else reg_text
+    # Without a position number this is not a valid result row (header/split/blank)
+    if position is None and not dsq:
+        return None
 
-    # Year: 2-digit birth year right after name, isolated (not part of a longer number).
-    # Use negative lookbehind/lookahead so we match exactly 2 digits not adjacent to digits.
-    name_year_match = re.match(r'^(.*?)(?<!\d)(\d{2})(?!\d)([A-Z].*)$', after_pos, re.DOTALL)
-    if name_year_match:
-        raw_name = name_year_match.group(1).strip().rstrip(',').strip()
-        year = name_year_match.group(2)
-        rest = name_year_match.group(3) or ''
-    else:
-        raw_name = after_pos
-        year = ''
-        rest = ''
-
-    swimmer_name = raw_name.strip()
+    swimmer_name = (
+        pos_name_text[pos_match.end():].strip().rstrip(',').strip()
+        if pos_match else pos_name_text.strip()
+    )
     if not swimmer_name:
         return None
 
-    # Club: letters, spaces, dots, hyphens before the first digit run
-    club_match = re.match(r'^([A-Za-záéíóúÁÉÍÓÚüÜñÑ\s\.\-]+)', rest)
-    club = club_match.group(1).strip().rstrip('- ').strip() if club_match else ''
+    # Year: take the first 2–4 digit run found in the year column
+    year_text  = _chars_to_text(year_chars).strip()
+    year_match = re.search(r'\d{2,4}', year_text)
+    year = year_match.group(0)[-2:] if year_match else ''   # keep last 2 digits
 
-    # Points: first number after club
-    points_match = re.search(r'(\d+[,\.]\d+)', rest[len(club):])
+    # Club: full text of the club column; strip trailing qualifier abbreviations
+    # (e.g. "AN", "AC", "MN" that appear as a separate token after the club name)
+    club_raw = _chars_to_text(club_chars).strip().rstrip('- ').strip()
+    club = re.sub(r'\s+[A-Z]{2}$', '', club_raw).strip().rstrip('- ').strip()
+
+    # Points: first decimal number in the area right of club_end but left of time
+    points_chars = [c for c in regular_chars
+                    if RES_COL['club_end'] <= c['x0'] < RES_TIEMPO_X]
+    points_match = re.search(r'(\d+[,\.]\d+)', _chars_to_text(points_chars))
     if points_match:
-        points_str = points_match.group(1).replace(',', '.')
         try:
-            points = float(points_str)
+            points = float(points_match.group(1).replace(',', '.'))
         except ValueError:
             points = None
     else:
         points = None
 
-    if not swimmer_name or (result_time is None and not dsq):
+    if result_time is None and not dsq:
         return None
 
     return {
