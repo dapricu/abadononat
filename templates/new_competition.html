@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}Nueva competición{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <h1 class="h3 mb-4">Nueva competición</h1>
+    <form method="post">
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Nombre *</label>
+        <input type="text" name="name" class="form-control" required placeholder="Copa División Honor 2026">
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Fecha</label>
+        <input type="date" name="date" class="form-control">
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Instalación / Piscina</label>
+        <input type="text" name="venue" class="form-control"
+               placeholder="Piscina Municipal Castellón, Complejo Acuático Valencia…">
+        <div class="form-text">
+          Se usa para el <strong>Ranking de Piscinas</strong>: compara las mejoras entre
+          distintas instalaciones. Si varias competiciones se celebran en el mismo recinto,
+          escribe exactamente el mismo nombre.
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Tipo de piscina</label>
+        <select name="pool_type" class="form-select">
+          <option value="">Desconocido (se detectará del PDF de resultados)</option>
+          <option value="25m">25 metros</option>
+          <option value="50m">50 metros</option>
+        </select>
+        <div class="form-text">
+          Solo se compararán las inscripciones realizadas en el mismo tipo de piscina.
+        </div>
+      </div>
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Crear competición</button>
+        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

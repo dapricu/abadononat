@@ -1,0 +1,221 @@
+{% extends 'base.html' %}
+{% block title %}Análisis – {{ comp.name }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Competiciones</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('competition', comp_id=comp.id) }}">{{ comp.name }}</a></li>
+    <li class="breadcrumb-item active">Análisis</li>
+  </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">{{ comp.name }}</h1>
+  <span class="badge bg-info text-dark fs-6">
+    <i class="bi bi-rulers"></i> Piscina {{ comp.pool_type or '?' }}
+  </span>
+</div>
+
+{% set ov = data.overall %}
+
+<!-- Overview cards -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card text-center h-100 border-primary">
+      <div class="card-body">
+        <div class="display-6 fw-bold text-primary">{{ ov.count }}</div>
+        <div class="text-muted small">Nadadores comparados</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center h-100 border-success">
+      <div class="card-body">
+        <div class="display-6 fw-bold text-success">{{ ov.pct_improved }}%</div>
+        <div class="text-muted small">Mejoraron su marca</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center h-100">
+      <div class="card-body">
+        <div class="display-6 fw-bold {% if ov.mean_improvement_sec > 0 %}text-success{% elif ov.mean_improvement_sec < 0 %}text-danger{% endif %}">
+          {{ ov.mean_improvement_sec | fmt_sign }}s
+        </div>
+        <div class="text-muted small">Mejora media</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center h-100">
+      <div class="card-body">
+        <div class="display-6 fw-bold">{{ ov.std_improvement_sec | round(3) }}s</div>
+        <div class="text-muted small">Desviación típica</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if data.excluded_pool %}
+<div class="alert alert-info">
+  <i class="bi bi-info-circle"></i>
+  <strong>{{ data.excluded_pool | length }} inscripciones excluidas</strong> por estar en piscina diferente
+  ({{ comp.pool_type or '?' }}). Solo se comparan marcas del mismo tipo de piscina.
+</div>
+{% endif %}
+
+<!-- Tabs -->
+<ul class="nav nav-tabs mb-4" id="analysisTabs">
+  <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-stroke">Por estilo</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-distance">Por distancia</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-gender">Por género</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-club">Por club</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-records">Detalle</a></li>
+</ul>
+
+<div class="tab-content">
+
+  <!-- By stroke -->
+  <div class="tab-pane fade show active" id="tab-stroke">
+    <div class="row g-3 mb-3">
+      <div class="col-md-6"><canvas id="chartStroke" height="220"></canvas></div>
+      <div class="col-md-6">{{ _stats_table(data.by_stroke) }}</div>
+    </div>
+  </div>
+
+  <!-- By distance -->
+  <div class="tab-pane fade" id="tab-distance">
+    <div class="row g-3 mb-3">
+      <div class="col-md-6"><canvas id="chartDistance" height="220"></canvas></div>
+      <div class="col-md-6">{{ _stats_table(data.by_distance) }}</div>
+    </div>
+  </div>
+
+  <!-- By gender -->
+  <div class="tab-pane fade" id="tab-gender">
+    {{ _stats_table(data.by_gender) }}
+  </div>
+
+  <!-- By club -->
+  <div class="tab-pane fade" id="tab-club">
+    {{ _stats_table(data.by_club) }}
+  </div>
+
+  <!-- Detail table -->
+  <div class="tab-pane fade" id="tab-records">
+    <div class="mb-2">
+      <input type="text" id="filterRecords" class="form-control form-control-sm w-auto"
+             placeholder="Filtrar por nombre o club…">
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm table-hover table-striped" id="recordsTable">
+        <thead class="table-dark">
+          <tr>
+            <th>Ev.</th><th>G</th><th>Dist.</th><th>Estilo</th>
+            <th>Nadador</th><th>Club</th><th>Año</th>
+            <th>M.Inscr.</th><th>Resultado</th>
+            <th>Mejora (s)</th><th>Mejora (%)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in data.records %}
+          <tr class="{% if r.improvement_sec > 0 %}table-success{% elif r.improvement_sec < 0 %}table-danger{% endif %}">
+            <td>{{ r.event_number }}</td>
+            <td>{{ r.gender }}</td>
+            <td>{{ r.distance }}m</td>
+            <td>{{ r.stroke }}</td>
+            <td>{{ r.swimmer_name }}</td>
+            <td>{{ r.club }}</td>
+            <td>{{ r.year }}</td>
+            <td class="font-monospace">{{ r.entry_time | fmt_time }}</td>
+            <td class="font-monospace">{{ r.result_time | fmt_time }}</td>
+            <td class="fw-semibold {% if r.improvement_sec > 0 %}text-success{% else %}text-danger{% endif %}">
+              {{ r.improvement_sec | fmt_sign }}
+            </td>
+            <td class="{% if r.improvement_pct > 0 %}text-success{% else %}text-danger{% endif %}">
+              {{ r.improvement_pct | fmt_sign }}%
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+{# ---- Jinja macros ---- #}
+
+{% macro _stats_table(by_group) %}
+<div class="table-responsive">
+  <table class="table table-sm table-bordered align-middle">
+    <thead class="table-secondary">
+      <tr>
+        <th>Grupo</th><th>N</th><th>% mejora</th>
+        <th>Media (s)</th><th>Mediana (s)</th><th>σ (s)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for group, s in by_group.items() | sort %}
+      <tr>
+        <td class="fw-semibold">{{ group }}</td>
+        <td>{{ s.count }}</td>
+        <td>
+          <div class="progress" style="min-width:80px;height:18px">
+            <div class="progress-bar bg-success" style="width:{{ s.pct_improved }}%">
+              {{ s.pct_improved }}%
+            </div>
+          </div>
+        </td>
+        <td class="{% if s.mean_improvement_sec > 0 %}text-success{% elif s.mean_improvement_sec < 0 %}text-danger{% endif %}">
+          {{ s.mean_improvement_sec | fmt_sign }}
+        </td>
+        <td class="{% if s.median_improvement_sec > 0 %}text-success{% elif s.median_improvement_sec < 0 %}text-danger{% endif %}">
+          {{ s.median_improvement_sec | fmt_sign }}
+        </td>
+        <td>{{ s.std_improvement_sec | round(3) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endmacro %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const byStroke   = {{ data.by_stroke   | tojson }};
+const byDistance = {{ data.by_distance | tojson }};
+
+// ---- Stroke / distance charts ----
+function makeBarChart(canvasId, groupData) {
+  const labels = Object.keys(groupData);
+  const means  = labels.map(k => groupData[k].mean_improvement_sec);
+  const colors = means.map(v => v >= 0 ? 'rgba(25,135,84,0.75)' : 'rgba(220,53,69,0.75)');
+  new Chart(document.getElementById(canvasId), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{ label: 'Mejora media (s)', data: means,
+        backgroundColor: colors, borderColor: colors.map(c => c.replace('0.75','1')), borderWidth: 1 }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: { y: { title: { display: true, text: 'segundos (+ = mejora)' } } }
+    }
+  });
+}
+makeBarChart('chartStroke',   byStroke);
+makeBarChart('chartDistance', byDistance);
+
+// ---- Filter records table ----
+document.getElementById('filterRecords').addEventListener('input', function() {
+  const q = this.value.toLowerCase();
+  document.querySelectorAll('#recordsTable tbody tr').forEach(tr => {
+    tr.style.display = tr.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+});
+</script>
+{% endblock %}

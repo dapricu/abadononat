@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+{% block title %}Clasificación – {{ copa.name }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Inicio</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('copa', copa_id=copa.id) }}">{{ copa.name }}</a></li>
+    <li class="breadcrumb-item active">Clasificación</li>
+  </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">{{ copa.name }}</h1>
+  <span class="badge bg-warning text-dark fs-6"><i class="bi bi-trophy-fill"></i> Copa de Clubs</span>
+</div>
+
+<div class="mb-3 text-muted small">
+  Divisiones incluidas:
+  {% for row in linked %}
+    <span class="badge bg-secondary">{{ row.division_name or row.name }}</span>
+  {% endfor %}
+</div>
+
+<!-- Tabs -->
+<ul class="nav nav-tabs mb-4" id="copaTabs">
+  <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-ranking">Clasificación de clubs</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-events">Por prueba</a></li>
+</ul>
+
+<div class="tab-content">
+
+  <!-- Club ranking -->
+  <div class="tab-pane fade show active" id="tab-ranking">
+    <div class="row g-3">
+      <div class="col-lg-7">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle" id="rankingTable">
+            <thead class="table-dark">
+              <tr>
+                <th style="width:3rem">#</th>
+                <th>Club</th>
+                <th class="text-center">Pruebas<br>puntuadas</th>
+                <th class="text-end">Puntos</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in data.club_ranking %}
+              <tr class="{% if row.rank == 1 %}table-warning{% elif row.rank == 2 %}table-secondary{% elif row.rank == 3 %}club-bronze{% endif %}"
+                  style="cursor:pointer" data-bs-toggle="collapse"
+                  data-bs-target="#detail-{{ loop.index }}" aria-expanded="false">
+                <td class="fw-bold fs-5">
+                  {% if row.rank == 1 %}🥇
+                  {% elif row.rank == 2 %}🥈
+                  {% elif row.rank == 3 %}🥉
+                  {% else %}{{ row.rank }}
+                  {% endif %}
+                </td>
+                <td class="fw-semibold">{{ row.club }}</td>
+                <td class="text-center">{{ row.events_scored }}</td>
+                <td class="text-end fw-bold fs-5">{{ row.total }}</td>
+              </tr>
+              <tr class="collapse" id="detail-{{ loop.index }}">
+                <td colspan="4" class="bg-light py-2 px-4">
+                  <div class="d-flex flex-wrap gap-2">
+                    {% for ev_key, pts in row.breakdown.items() | sort(attribute='1', reverse=True) %}
+                    <span class="badge bg-primary">
+                      {{ ev_key | replace('_', ' ') }}: {{ pts }} pts
+                    </span>
+                    {% endfor %}
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="col-lg-5">
+        <canvas id="chartClubs" style="max-height:420px"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Per-event detail -->
+  <div class="tab-pane fade" id="tab-events">
+    <div class="mb-3 d-flex gap-2 align-items-center flex-wrap">
+      <select id="filterGender" class="form-select form-select-sm w-auto">
+        <option value="">Todos los géneros</option>
+        <option value="M">Masculino</option>
+        <option value="F">Femenino</option>
+      </select>
+      <select id="filterStroke" class="form-select form-select-sm w-auto">
+        <option value="">Todos los estilos</option>
+        {% for ev in data.events.values() | unique(attribute='stroke') | sort(attribute='stroke') %}
+        <option value="{{ ev.stroke }}">{{ ev.stroke }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div id="eventsContainer">
+    {% for ev_key, ev in data.events.items() | sort %}
+    <div class="event-block mb-4"
+         data-gender="{{ ev.gender }}" data-stroke="{{ ev.stroke }}">
+      <h5 class="mb-2">
+        <span class="badge bg-secondary">{{ ev.gender }}</span>
+        {{ ev.distance }}m {{ ev.stroke }}
+      </h5>
+      <div class="table-responsive">
+        <table class="table table-sm table-striped table-hover">
+          <thead class="table-secondary">
+            <tr>
+              <th style="width:3rem">Pos.</th>
+              <th>Nadador/a</th>
+              <th>Club</th>
+              <th>Año</th>
+              <th>División</th>
+              <th class="text-end">Tiempo</th>
+              <th class="text-end">Puntos Copa</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in ev.finishers %}
+            <tr class="{% if f.copa_points > 0 %}{% if f.pos <= 3 %}table-warning{% endif %}{% else %}text-muted{% endif %}">
+              <td class="fw-semibold">{{ f.pos }}</td>
+              <td>{{ f.swimmer_name }}</td>
+              <td>{{ f.club }}</td>
+              <td>{{ f.year }}</td>
+              <td><span class="badge bg-light text-dark border">{{ f.division }}</span></td>
+              <td class="text-end font-monospace">{{ f.result_time | fmt_time }}</td>
+              <td class="text-end fw-bold {% if f.copa_points > 0 %}text-primary{% endif %}">
+                {{ f.copa_points if f.copa_points > 0 else '–' }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Bar chart: top clubs by points
+const ranking = {{ data.club_ranking | tojson }};
+const topN = ranking.slice(0, 20);
+new Chart(document.getElementById('chartClubs'), {
+  type: 'bar',
+  data: {
+    labels: topN.map(r => r.club),
+    datasets: [{
+      label: 'Puntos Copa',
+      data: topN.map(r => r.total),
+      backgroundColor: topN.map((r, i) =>
+        i === 0 ? '#ffc107' : i === 1 ? '#adb5bd' : i === 2 ? '#cd7f32' : 'rgba(13,110,253,0.65)'
+      ),
+      borderColor: 'transparent',
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    plugins: { legend: { display: false } },
+    scales: { x: { title: { display: true, text: 'Puntos' } } }
+  }
+});
+
+// Filter events tab
+function filterEvents() {
+  const g = document.getElementById('filterGender').value;
+  const s = document.getElementById('filterStroke').value;
+  document.querySelectorAll('.event-block').forEach(el => {
+    const match = (!g || el.dataset.gender === g) && (!s || el.dataset.stroke === s);
+    el.style.display = match ? '' : 'none';
+  });
+}
+document.getElementById('filterGender').addEventListener('change', filterEvents);
+document.getElementById('filterStroke').addEventListener('change', filterEvents);
+</script>
+{% endblock %}

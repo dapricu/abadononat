@@ -1,0 +1,384 @@
+{% extends 'base.html' %}
+{% block title %}Ranking de Piscinas{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0"><i class="bi bi-search"></i> Ranking de Piscinas</h1>
+</div>
+
+<div class="alert alert-secondary small mb-4">
+  <strong>¿Cómo funciona?</strong>
+  Para cada prueba (género + distancia + estilo), se calcula la mejora media de todos los
+  nadadores en todas las instalaciones. Cada nadador recibe un <em>residuo ajustado</em>
+  = (su mejora − media de la prueba) / σ de la prueba. Se agregan los residuos por
+  instalación y se calcula un <strong>t-estadístico</strong> que mide si la desviación es
+  estadísticamente significativa.
+  <br><br>
+  <strong>Hipótesis de piscina corta:</strong> si una instalación mide menos de lo
+  declarado, <em>todos</em> sus nadadores nadan una distancia real menor → tiempos más
+  rápidos que en piscinas correctas → mejoran más de lo esperado respecto a sus marcas de
+  inscripción → <strong>residuo positivo elevado</strong>.
+  El ranking ordena de mayor a menor residuo: las piscinas en la parte superior son
+  las más sospechosas de ser cortas.
+  <br><br>
+  Necesitas al menos dos instalaciones con datos para que la comparación tenga sentido.
+  Asigna el campo <em>"Instalación / Piscina"</em> en cada competición.
+</div>
+
+{% if not comps_with_data %}
+<div class="alert alert-warning">
+  <i class="bi bi-exclamation-triangle"></i>
+  No hay competiciones con inscripciones <em>y</em> resultados cargados.
+  Sube ambos archivos en al menos una competición.
+</div>
+
+{% elif ranking | length < 2 %}
+<div class="alert alert-info">
+  <i class="bi bi-info-circle"></i>
+  Se necesitan al menos <strong>2 instalaciones</strong> con datos para comparar.
+  Asegúrate de que cada competición tiene el campo "Instalación / Piscina" relleno.
+  <br><br>
+  Competiciones con datos:
+  <ul class="mb-0 mt-2">
+    {% for c in comps_with_data %}
+    <li>
+      <a href="{{ url_for('competition', comp_id=c.id) }}">{{ c.name }}</a>
+      — instalación: <strong>{{ c.venue or '(sin asignar)' }}</strong>
+      ({{ c.n }} nadadores)
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+
+{% else %}
+
+<!-- Summary cards -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-4">
+    <div class="card text-center border-secondary">
+      <div class="card-body py-3">
+        <div class="display-6 fw-bold">{{ ranking | length }}</div>
+        <div class="text-muted small">Instalaciones comparadas</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="card text-center border-secondary">
+      <div class="card-body py-3">
+        <div class="display-6 fw-bold">{{ all_records | length }}</div>
+        <div class="text-muted small">Nadadores analizados</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="card text-center border-secondary">
+      <div class="card-body py-3">
+        {% set suspicious = ranking | selectattr('suspicion', 'in', ['alta', 'media']) | list %}
+        <div class="display-6 fw-bold {% if suspicious %}text-danger{% else %}text-success{% endif %}">
+          {{ suspicious | length }}
+        </div>
+        <div class="text-muted small">Instalaciones flaggeadas</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts row -->
+<div class="row g-4 mb-5">
+  <div class="col-lg-6">
+    <canvas id="chartRanking" style="max-height:380px"></canvas>
+    <div class="text-muted small text-center mt-1">
+      Residuo ajustado medio por instalación (positivo = mejoras anómalas = sospechoso)
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <canvas id="chartScatter" style="max-height:380px"></canvas>
+    <div class="text-muted small text-center mt-1">
+      Marca de inscripción vs tiempo en competición por instalación
+      (por encima de la diagonal = empeoró)
+    </div>
+  </div>
+</div>
+
+<!-- Ranking table -->
+<div class="table-responsive mb-5">
+  <table class="table table-hover align-middle">
+    <thead class="table-dark">
+      <tr>
+        <th style="width:2.5rem">#</th>
+        <th>Instalación</th>
+        <th>Competiciones</th>
+        <th class="text-center">N nadadores</th>
+        <th class="text-end" title="Mejora media en segundos. Positivo = más rápidos que su inscripción.">
+          Media mejora
+        </th>
+        <th class="text-end" title="Cociente resultado/inscripción. < 1 = más rápido que la inscripción (sospechoso si es bajo).">
+          Índice rel.
+        </th>
+        <th class="text-end" title="% de nadadores que mejoraron su marca de inscripción en esta instalación.">
+          % mejoran
+        </th>
+        <th class="text-end" title="Residuo ajustado por prueba: diferencia vs otras instalaciones en las mismas pruebas.">
+          Residuo adj.
+        </th>
+        <th class="text-end" title="t-estadístico: residuo medio / error estándar. > 2.5 ≈ significativo.">
+          t-stat
+        </th>
+        <th class="text-center">Anomalía</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in ranking %}
+      <tr class="{{ _row_class(row.suspicion) }}"
+          data-bs-toggle="collapse" data-bs-target="#detail-{{ loop.index }}"
+          style="cursor:pointer">
+        <td class="fw-bold text-center">{{ row.rank }}</td>
+        <td class="fw-semibold">{{ row.venue }}</td>
+        <td class="small text-muted">
+          {% for c in row.competitions %}<span class="badge bg-light text-dark border me-1">{{ c }}</span>{% endfor %}
+        </td>
+        <td class="text-center">{{ row.n }}</td>
+        <td class="text-end fw-semibold {% if row.mean_improvement_sec > 0 %}text-success{% elif row.mean_improvement_sec < 0 %}text-danger{% endif %}">
+          {{ row.mean_improvement_sec | fmt_sign }}s
+          <br><small class="fw-normal text-muted">{{ row.mean_improvement_pct | fmt_sign }}%</small>
+        </td>
+        <td class="text-end {% if row.mean_rel_idx < 0.995 %}text-danger fw-semibold{% elif row.mean_rel_idx > 1.005 %}text-success{% endif %}">
+          {{ '%.4f' | format(row.mean_rel_idx) }}
+        </td>
+        <td class="text-end {% if row.pct_improved > 70 %}text-danger fw-semibold{% elif row.pct_improved > 55 %}text-warning{% endif %}">
+          {{ row.pct_improved }}%
+          <br><small class="text-muted">({{ row.n_improved }}/{{ row.n }})</small>
+        </td>
+        <td class="text-end fw-semibold {% if row.mean_residual > 0.5 %}text-danger{% elif row.mean_residual < -0.5 %}text-secondary{% endif %}">
+          {{ row.mean_residual | fmt_sign }}
+        </td>
+        <td class="text-end">{{ row.t_stat | fmt_sign }}</td>
+        <td class="text-center">{{ _suspicion_badge(row.suspicion) }}</td>
+      </tr>
+      <!-- Expandable detail: top improvers -->
+      <tr class="collapse" id="detail-{{ loop.index }}">
+        <td colspan="10" class="bg-light py-2 px-4">
+          <div class="row">
+            <div class="col-md-8">
+              <strong class="small">Nadadores con mayor mejora anómala en esta instalación:</strong>
+              <table class="table table-xs table-borderless mb-0 mt-1 small">
+                <thead><tr>
+                  <th>Nadador/a</th><th>Club</th><th>Prueba</th>
+                  <th class="text-end">Inscripción</th>
+                  <th class="text-end">Resultado</th>
+                  <th class="text-end">Mejora (s)</th>
+                  <th class="text-end">Mejora (%)</th>
+                  <th class="text-end">Residuo adj.</th>
+                </tr></thead>
+                <tbody>
+                {% for sw in row.top_improvers %}
+                <tr class="{% if sw.residual > 1 %}text-danger fw-semibold{% endif %}">
+                  <td>{{ sw.swimmer_name }}</td>
+                  <td>{{ sw.club }}</td>
+                  <td>{{ sw.event }}</td>
+                  <td class="text-end font-monospace">{{ sw.entry_time | fmt_time }}</td>
+                  <td class="text-end font-monospace">{{ sw.result_time | fmt_time }}</td>
+                  <td class="text-end {% if sw.improvement_sec > 0 %}text-success{% else %}text-danger{% endif %}">
+                    {{ sw.improvement_sec | fmt_sign }}s
+                  </td>
+                  <td class="text-end {% if sw.improvement_pct > 0 %}text-success{% else %}text-danger{% endif %}">
+                    {{ sw.improvement_pct | fmt_sign }}%
+                  </td>
+                  <td class="text-end">{{ sw.residual | fmt_sign }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            <div class="col-md-4 small text-muted">
+              <strong>Resumen:</strong><br>
+              Gap vs media global: <strong class="{% if row.gap_vs_mean_sec > 0 %}text-danger{% endif %}">{{ row.gap_vs_mean_sec | fmt_sign }}s</strong><br>
+              Mediana mejora: {{ row.median_improvement_sec | fmt_sign }}s<br>
+              Desv. típica: {{ row.std_improvement_sec }}s<br>
+              Cohen's d: {{ row.cohen_d | fmt_sign }}
+            </div>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Competitions included -->
+<h5 class="mb-3">Competiciones incluidas</h5>
+<div class="table-responsive">
+  <table class="table table-sm table-bordered">
+    <thead class="table-secondary">
+      <tr><th>Competición</th><th>Instalación asignada</th><th>Nadadores analizados</th></tr>
+    </thead>
+    <tbody>
+      {% for c in comps_with_data %}
+      <tr>
+        <td><a href="{{ url_for('competition', comp_id=c.id) }}">{{ c.name }}</a></td>
+        <td>{{ c.venue or '<span class="text-muted">(sin asignar)</span>' }}</td>
+        <td>{{ c.n }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endif %}
+
+{# ---- Macros ---- #}
+
+{% macro _row_class(s) %}{% if s == 'alta' %}table-danger{% elif s == 'media' %}table-warning{% elif s == 'baja' %}table-info{% elif s == 'baja_mod' %}table-light{% endif %}{% endmacro %}
+
+{% macro _suspicion_badge(s) %}
+{% if s == 'alta' %}
+  <span class="badge bg-danger" title="Mejora anómalamente alta (t ≥ 2.5, p ≈ 0.01). Posible piscina corta.">🔴 Alta</span>
+{% elif s == 'media' %}
+  <span class="badge bg-warning text-dark" title="Mejora algo superior a la media (t entre 1.5 y 2.5).">🟡 Media</span>
+{% elif s == 'baja' %}
+  <span class="badge bg-secondary" title="Mejoras significativamente por debajo de la media (t ≤ −2.5). Piscina posiblemente larga o condiciones difíciles.">🔵 Baja</span>
+{% elif s == 'baja_mod' %}
+  <span class="badge bg-light text-dark border" title="Mejoras algo por debajo de la media.">🔵 Baja mod.</span>
+{% elif s == 'insuf' %}
+  <span class="badge bg-light text-muted border" title="Menos de 5 nadadores, datos insuficientes.">⚪ Insuf.</span>
+{% else %}
+  <span class="badge bg-success">🟢 Normal</span>
+{% endif %}
+{% endmacro %}
+
+{% endblock %}
+
+{% block scripts %}
+{% if ranking | length >= 2 %}
+<script>
+const rankingData = {{ ranking | tojson }};
+const allRecords  = {{ all_records | tojson }};
+
+// ---- Horizontal bar: residuo ajustado por instalación ----
+{
+  const suspColors = rankingData.map(r => {
+    if (r.suspicion === 'alta')     return 'rgba(220,53,69,0.85)';
+    if (r.suspicion === 'media')    return 'rgba(255,193,7,0.85)';
+    if (r.suspicion === 'baja')     return 'rgba(108,117,125,0.7)';
+    if (r.suspicion === 'baja_mod') return 'rgba(173,181,189,0.7)';
+    return 'rgba(25,135,84,0.75)';
+  });
+  new Chart(document.getElementById('chartRanking'), {
+    type: 'bar',
+    data: {
+      labels: rankingData.map(r => r.venue),
+      datasets: [{
+        label: 'Residuo ajustado',
+        data: rankingData.map(r => r.mean_residual),
+        backgroundColor: suspColors,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const r = rankingData[ctx.dataIndex];
+              const sign = v => (v >= 0 ? '+' : '') + v;
+              return [
+                `Residuo adj.: ${sign(r.mean_residual)}`,
+                `Mejora media: ${sign(r.mean_improvement_sec)}s (${sign(r.mean_improvement_pct)}%)`,
+                `% mejoran: ${r.pct_improved}%`,
+                `t-stat: ${sign(r.t_stat)}   N=${r.n}`,
+              ];
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          title: { display: true, text: 'Residuo medio ajustado (positivo = sospechoso)' },
+          grid: {
+            color: ctx => ctx.tick.value === 0 ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.08)',
+            lineWidth: ctx => ctx.tick.value === 0 ? 2 : 1
+          }
+        }
+      }
+    }
+  });
+}
+
+// ---- Scatter: entry time vs result time, colored by venue ----
+{
+  // Palette per venue
+  const palette = [
+    'rgba(220,53,69,0.65)',  'rgba(255,193,7,0.65)',
+    'rgba(13,110,253,0.65)', 'rgba(25,135,84,0.65)',
+    'rgba(111,66,193,0.65)', 'rgba(253,126,20,0.65)',
+    'rgba(32,201,151,0.65)', 'rgba(102,16,242,0.65)',
+  ];
+  const venueList = [...new Set(allRecords.map(r => r.venue).filter(Boolean))];
+  const venueColor = Object.fromEntries(venueList.map((v, i) => [v, palette[i % palette.length]]));
+
+  // Group by venue
+  const venueGroups = {};
+  allRecords.forEach(r => {
+    if (!r.venue) return;
+    venueGroups[r.venue] = venueGroups[r.venue] || [];
+    venueGroups[r.venue].push({
+      x: r.entry_time, y: r.result_time,
+      name: r.swimmer_name, club: r.club, ev: `${r.distance}m ${r.stroke}`
+    });
+  });
+
+  const allTimes = allRecords.flatMap(r => [r.entry_time, r.result_time]);
+  const minT = Math.min(...allTimes) * 0.98;
+  const maxT = Math.max(...allTimes) * 1.02;
+
+  const datasets = [
+    {
+      label: 'sin cambio (y=x)',
+      data: [{ x: minT, y: minT }, { x: maxT, y: maxT }],
+      type: 'line',
+      borderColor: 'rgba(0,0,0,0.3)',
+      borderDash: [6, 4],
+      borderWidth: 1.5,
+      pointRadius: 0,
+      fill: false,
+      order: -1,
+    },
+    ...Object.entries(venueGroups).map(([venue, pts]) => ({
+      label: venue,
+      data: pts,
+      backgroundColor: venueColor[venue],
+      pointRadius: 5,
+      pointHoverRadius: 7,
+    }))
+  ];
+
+  new Chart(document.getElementById('chartScatter'), {
+    type: 'scatter',
+    data: { datasets },
+    options: {
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 12 } },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              if (ctx.dataset.label === 'sin cambio (y=x)') return 'Referencia sin cambio';
+              const p = ctx.raw;
+              const diff = (p.y - p.x).toFixed(2);
+              const sign = diff >= 0 ? '+' : '';
+              return `${ctx.dataset.label}: ${p.name} (${p.club}) — ${p.ev} | inscr ${p.x.toFixed(2)}s → result ${p.y.toFixed(2)}s (${sign}${diff}s)`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { title: { display: true, text: 'Tiempo inscripción (s)' }, min: minT, max: maxT },
+        y: { title: { display: true, text: 'Tiempo en competición (s)' }, min: minT, max: maxT }
+      }
+    }
+  });
+}
+</script>
+{% endif %}
+{% endblock %}
