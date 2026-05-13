@@ -139,6 +139,9 @@ def _parse_event_header(line: str) -> dict | None:
 # Inscriptions parser
 # ---------------------------------------------------------------------------
 
+RESERVAS_RE = re.compile(r'\bReservas?\b', re.IGNORECASE)
+
+
 def parse_inscriptions(pdf_path: str) -> list[dict]:
     """
     Parse an inscriptions PDF and return a list of entry dicts:
@@ -154,10 +157,12 @@ def parse_inscriptions(pdf_path: str) -> list[dict]:
         'club': str,
         'pool_length': str,     # '25m' | '50m' | ''
         'weighted_time': float | None,
+        'reserve': bool,
       }
     """
     entries = []
     current_event: dict | None = None
+    in_reservas = False
 
     with pdfplumber.open(pdf_path) as pdf:
         for page in pdf.pages:
@@ -171,6 +176,12 @@ def parse_inscriptions(pdf_path: str) -> list[dict]:
                 ev = _parse_event_header(line)
                 if ev is not None:
                     current_event = ev
+                    in_reservas = False
+                    continue
+
+                # Detect "Reservas" section marker within current event
+                if current_event is not None and RESERVAS_RE.search(line):
+                    in_reservas = True
                     continue
 
                 if current_event is None:
@@ -179,6 +190,7 @@ def parse_inscriptions(pdf_path: str) -> list[dict]:
                 # Try to parse a swimmer row by column split
                 entry = _parse_inscription_row(chars, current_event)
                 if entry:
+                    entry['reserve'] = in_reservas
                     entries.append(entry)
 
     return entries

@@ -17,8 +17,61 @@
   </button>
 </div>
 
-<!-- Filters -->
+<!-- Stats bar -->
 <div class="row g-2 mb-3">
+  <div class="col-6 col-sm-4 col-md-2">
+    <div class="card text-center py-2 px-1">
+      <div class="fs-4 fw-bold">{{ stats.total }}</div>
+      <div class="text-muted small">Total</div>
+    </div>
+  </div>
+  <div class="col-6 col-sm-4 col-md-2">
+    <div class="card text-center py-2 px-1">
+      <div class="fs-4 fw-bold">{{ stats.pool_25 }}</div>
+      <div class="text-muted small">Piscina 25m</div>
+    </div>
+  </div>
+  <div class="col-6 col-sm-4 col-md-2">
+    <div class="card text-center py-2 px-1">
+      <div class="fs-4 fw-bold">{{ stats.pool_50 }}</div>
+      <div class="text-muted small">Piscina 50m</div>
+    </div>
+  </div>
+  <div class="col-6 col-sm-4 col-md-2">
+    <div class="card text-center py-2 px-1 border-warning">
+      <div class="fs-4 fw-bold text-warning">{{ stats.no_time }}</div>
+      <div class="text-muted small">Sin Tiempo</div>
+    </div>
+  </div>
+  <div class="col-6 col-sm-4 col-md-2">
+    <div class="card text-center py-2 px-1 border-info">
+      <div class="fs-4 fw-bold text-info">{{ stats.reserves }}</div>
+      <div class="text-muted small">Reservas</div>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk actions -->
+<div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+  <button class="btn btn-outline-danger btn-sm" id="btnDeleteSelected" disabled>
+    <i class="bi bi-trash"></i> Eliminar seleccionados (<span id="selCount">0</span>)
+  </button>
+  <button class="btn btn-outline-warning btn-sm" id="btnDeleteNoTime"
+          {% if stats.no_time == 0 %}disabled{% endif %}>
+    <i class="bi bi-clock-history"></i> Borrar Sin Tiempo ({{ stats.no_time }})
+  </button>
+  <button class="btn btn-outline-info btn-sm" id="btnDeleteReserves"
+          {% if stats.reserves == 0 %}disabled{% endif %}>
+    <i class="bi bi-person-dash"></i> Borrar Reservas ({{ stats.reserves }})
+  </button>
+  <button class="btn btn-outline-danger btn-sm" id="btnDeleteBoth"
+          {% if stats.no_time == 0 and stats.reserves == 0 %}disabled{% endif %}>
+    <i class="bi bi-trash3"></i> Borrar Sin Tiempo + Reservas
+  </button>
+</div>
+
+<!-- Filters -->
+<div class="row g-2 mb-2">
   <div class="col-sm-4">
     <input type="text" id="filterName" class="form-control form-control-sm"
            placeholder="Filtrar por nombre o club...">
@@ -44,23 +97,29 @@
 
 <!-- Table -->
 <div class="table-responsive">
-  <table class="table table-sm table-hover table-bordered" id="entriesTable">
-    <thead class="table-dark sticky-top">
+  <table class="table table-sm table-hover table-bordered mb-0" id="entriesTable">
+    <thead>
       <tr>
-        <th>Prueba</th>
-        <th>#</th>
-        <th>Nadador</th>
-        <th>A&ntilde;o</th>
-        <th>Club</th>
-        <th>Pisc.</th>
-        <th>M.Ponderada</th>
-        <th style="width:90px"></th>
+        <th class="sticky-header" style="width:32px">
+          <input type="checkbox" id="selectAll" class="form-check-input">
+        </th>
+        <th class="sticky-header">Prueba</th>
+        <th class="sticky-header">#</th>
+        <th class="sticky-header">Nadador</th>
+        <th class="sticky-header">A&ntilde;o</th>
+        <th class="sticky-header">Club</th>
+        <th class="sticky-header">Pisc.</th>
+        <th class="sticky-header">M.Ponderada</th>
+        <th class="sticky-header" style="width:90px"></th>
       </tr>
     </thead>
     <tbody>
       {% for e in entries %}
       <tr data-id="{{ e.id }}" data-event="{{ e.event_number }}"
-          class="{% if e.weighted_time is none %}table-warning{% endif %}">
+          class="{% if e.weighted_time is none and not e.reserve %}table-warning{% elif e.reserve %}table-light{% endif %}">
+        <td>
+          <input type="checkbox" class="form-check-input row-check" value="{{ e.id }}">
+        </td>
         <td class="text-muted small">
           Pr.{{ e.event_number }}<br>
           <span class="badge bg-secondary">
@@ -69,7 +128,15 @@
         </td>
         <td>{{ e.seq }}</td>
         <td>
-          <span class="cell-display">{{ e.swimmer_name }}</span>
+          <span class="cell-display">
+            {{ e.swimmer_name }}
+            {% if e.weighted_time is none %}
+              <span class="badge bg-warning text-dark ms-1">Sin Tiempo</span>
+            {% endif %}
+            {% if e.reserve %}
+              <span class="badge bg-info text-dark ms-1">Reserva</span>
+            {% endif %}
+          </span>
           <input class="form-control form-control-sm cell-input d-none" name="swimmer_name"
                  value="{{ e.swimmer_name | e }}">
         </td>
@@ -187,13 +254,34 @@ function applyFilters() {
   document.querySelectorAll('#entriesTable tbody tr').forEach(tr => {
     const evMatch = !ev || tr.dataset.event === ev;
     const qMatch  = !q  || tr.textContent.toLowerCase().includes(q);
-    tr.style.display = (evMatch && qMatch) ? '' : 'none';
-    if (evMatch && qMatch) count++;
+    const vis = evMatch && qMatch;
+    tr.style.display = vis ? '' : 'none';
+    if (vis) count++;
   });
   document.getElementById('rowCount').textContent = count;
 }
 document.getElementById('filterName').addEventListener('input', applyFilters);
 document.getElementById('filterEvent').addEventListener('change', applyFilters);
+
+// ---- Checkbox multi-select ----
+function updateSelCount() {
+  const checked = document.querySelectorAll('.row-check:checked');
+  const n = checked.length;
+  document.getElementById('selCount').textContent = n;
+  document.getElementById('btnDeleteSelected').disabled = n === 0;
+}
+
+document.getElementById('selectAll').addEventListener('change', function() {
+  document.querySelectorAll('#entriesTable tbody tr').forEach(tr => {
+    if (tr.style.display !== 'none') {
+      tr.querySelector('.row-check').checked = this.checked;
+    }
+  });
+  updateSelCount();
+});
+
+document.querySelectorAll('.row-check').forEach(cb =>
+  cb.addEventListener('change', updateSelCount));
 
 // ---- Inline edit ----
 document.querySelectorAll('.btn-edit').forEach(btn =>
@@ -221,8 +309,7 @@ async function saveRow(tr) {
   const res  = await fetch(`${BASE}/${id}`, { method: 'POST', body: fd });
   const data = await res.json();
   if (!data.ok) { alert('Error al guardar'); return; }
-  // Update display spans
-  [['swimmer_name','swimmer_name'],['year','year'],['club','club']].forEach(([name, _]) => {
+  [['swimmer_name'],['year'],['club']].forEach(([name]) => {
     const inp = tr.querySelector(`[name="${name}"]`);
     inp.closest('td').querySelector('.cell-display').textContent = inp.value;
   });
@@ -238,8 +325,41 @@ async function deleteRow(tr) {
   if (!confirm('Eliminar esta inscripcion?')) return;
   const res  = await fetch(`${BASE}/${tr.dataset.id}/delete`, { method: 'POST' });
   const data = await res.json();
-  if (data.ok) { tr.remove(); applyFilters(); }
+  if (data.ok) { tr.remove(); applyFilters(); updateSelCount(); }
 }
+
+// ---- Bulk delete selected ----
+document.getElementById('btnDeleteSelected').addEventListener('click', async () => {
+  const ids = [...document.querySelectorAll('.row-check:checked')].map(cb => cb.value);
+  if (!ids.length) return;
+  if (!confirm(`Eliminar ${ids.length} inscripciones seleccionadas?`)) return;
+  const res  = await fetch(`${BASE}/bulk-delete`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ids})
+  });
+  const data = await res.json();
+  if (data.ok) location.reload();
+  else alert('Error al eliminar');
+});
+
+// ---- Bulk delete presets ----
+async function bulkPreset(preset, label) {
+  if (!confirm(`Eliminar todos los registros de tipo "${label}"?`)) return;
+  const fd = new FormData();
+  fd.append('preset', preset);
+  const res  = await fetch(`${BASE}/bulk-delete`, { method: 'POST', body: fd });
+  const data = await res.json();
+  if (data.ok) location.reload();
+  else alert('Error al eliminar');
+}
+
+document.getElementById('btnDeleteNoTime').addEventListener('click',
+  () => bulkPreset('no_time', 'Sin Tiempo'));
+document.getElementById('btnDeleteReserves').addEventListener('click',
+  () => bulkPreset('reserves', 'Reservas'));
+document.getElementById('btnDeleteBoth').addEventListener('click',
+  () => bulkPreset('no_time_and_reserves', 'Sin Tiempo + Reservas'));
 
 // ---- Add modal ----
 document.getElementById('addSaveBtn').addEventListener('click', async () => {
@@ -265,6 +385,12 @@ document.getElementById('addSaveBtn').addEventListener('click', async () => {
 
 <style>
 .btn-xs { padding: .1rem .35rem; font-size: .75rem; }
-.sticky-top { top: 56px; }
+.sticky-header {
+  position: sticky;
+  top: 56px;
+  z-index: 2;
+  background-color: #212529;
+  color: #fff;
+}
 </style>
 {% endblock %}

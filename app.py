@@ -85,7 +85,8 @@ def init_db():
             year                     TEXT,
             club                     TEXT,
             pool_length              TEXT,
-            weighted_time            REAL
+            weighted_time            REAL,
+            reserve                  INTEGER DEFAULT 0
         );
 
         CREATE TABLE IF NOT EXISTS results (
@@ -133,6 +134,10 @@ def _migrate(db: sqlite3.Connection):
     existing_ev = {row[1] for row in db.execute('PRAGMA table_info(events)').fetchall()}
     if 'relay' not in existing_ev:
         db.execute("ALTER TABLE events ADD COLUMN relay INTEGER DEFAULT 0")
+    # Add reserve column to entries if missing
+    existing_en = {row[1] for row in db.execute('PRAGMA table_info(entries)').fetchall()}
+    if 'reserve' not in existing_en:
+        db.execute("ALTER TABLE entries ADD COLUMN reserve INTEGER DEFAULT 0")
 
 
 def allowed_file(filename: str) -> bool:
@@ -169,10 +174,11 @@ def _store_entries(db, competition_id: int, entries: list[dict]):
         ev_id = _get_or_create_event(db, competition_id, e)
         db.execute(
             '''INSERT INTO entries
-               (event_id, seq, swimmer_name, swimmer_name_normalized, year, club, pool_length, weighted_time)
-               VALUES (?,?,?,?,?,?,?,?)''',
+               (event_id, seq, swimmer_name, swimmer_name_normalized, year, club, pool_length, weighted_time, reserve)
+               VALUES (?,?,?,?,?,?,?,?,?)''',
             (ev_id, e.get('seq'), e['swimmer_name'], e['swimmer_name_normalized'],
-             e.get('year', ''), e.get('club', ''), e.get('pool_length', ''), e.get('weighted_time'))
+             e.get('year', ''), e.get('club', ''), e.get('pool_length', ''), e.get('weighted_time'),
+             int(e.get('reserve', False)))
         )
 
 
@@ -370,12 +376,13 @@ def entries_view(comp_id: int):
         flash('Competicion no encontrada.', 'danger')
         return redirect(url_for('index'))
     db = get_db()
-    # Use 0 AS relay fallback if column does not exist yet (pre-migration DBs)
     ev_cols = {r[1] for r in db.execute('PRAGMA table_info(events)').fetchall()}
-    relay_col = 'ev.relay' if 'relay' in ev_cols else '0 AS relay'
+    en_cols = {r[1] for r in db.execute('PRAGMA table_info(entries)').fetchall()}
+    relay_col   = 'ev.relay'   if 'relay'   in ev_cols else '0 AS relay'
+    reserve_col = 'e.reserve'  if 'reserve' in en_cols else '0 AS reserve'
     rows = db.execute(
         f'''SELECT e.id, e.seq, e.swimmer_name, e.year, e.club,
-                   e.pool_length, e.weighted_time,
+                   e.pool_length, e.weighted_time, {reserve_col},
                    ev.number AS event_number, ev.gender, ev.distance, ev.stroke, {relay_col}
             FROM entries e
             JOIN events ev ON e.event_id = ev.id
@@ -386,12 +393,19 @@ def entries_view(comp_id: int):
     entries = []
     for r in rows:
         d = dict(r)
-        # Decode any bytes values that might be stored from older DB versions
         for k, v in d.items():
             if isinstance(v, bytes):
                 d[k] = v.decode('latin-1')
         entries.append(d)
-    return render_template('entries.html', comp=comp, entries=entries)
+
+    stats = {
+        'total':    len(entries),
+        'pool_25':  sum(1 for e in entries if e.get('pool_length') == '25m'),
+        'pool_50':  sum(1 for e in entries if e.get('pool_length') == '50m'),
+        'no_time':  sum(1 for e in entries if e.get('weighted_time') is None),
+        'reserves': sum(1 for e in entries if e.get('reserve')),
+    }
+    return render_template('entries.html', comp=comp, entries=entries, stats=stats)
 
 
 @app.route('/competition/<int:comp_id>/entries/<int:entry_id>', methods=['POST'])
@@ -422,6 +436,37 @@ def delete_entry(comp_id: int, entry_id: int):
     db.execute('DELETE FROM entries WHERE id=?', (entry_id,))
     db.commit()
     return jsonify({'ok': True})
+
+
+@app.route('/competition/<int:comp_id>/entries/bulk-delete', methods=['POST'])
+def bulk_delete_entries(comp_id: int):
+    """Delete a list of entry IDs (JSON body: {ids: [...]}) or a named preset."""
+    db = get_db()
+    preset = request.form.get('preset', '')
+    if preset in ('no_time', 'reserves', 'no_time_and_reserves'):
+        conditions = []
+        if preset in ('no_time', 'no_time_and_reserves'):
+            conditions.append('e.weighted_time IS NULL')
+        if preset in ('reserves', 'no_time_and_reserves'):
+            conditions.append('e.reserve = 1')
+        where = ' OR '.join(conditions)
+        db.execute(
+            f'''DELETE FROM entries WHERE id IN (
+                SELECT e.id FROM entries e
+                JOIN events ev ON e.event_id = ev.id
+                WHERE ev.competition_id = ? AND ({where}))''',
+            (comp_id,)
+        )
+        db.commit()
+        return jsonify({'ok': True})
+    # Individual IDs from JSON
+    data = request.get_json(silent=True) or {}
+    ids = [int(i) for i in data.get('ids', []) if str(i).isdigit()]
+    if not ids:
+        return jsonify({'ok': False, 'error': 'No IDs provided'}), 400
+    db.execute(f'DELETE FROM entries WHERE id IN ({",".join("?" * len(ids))})', ids)
+    db.commit()
+    return jsonify({'ok': True, 'deleted': len(ids)})
 
 
 @app.route('/competition/<int:comp_id>/entries/add', methods=['POST'])
