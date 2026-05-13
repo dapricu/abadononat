@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Inscripciones – {{ comp.name }}{% endblock %}
+{% block title %}Inscripciones &ndash; {{ comp.name }}{% endblock %}
 
 {% block content %}
 <nav aria-label="breadcrumb" class="mb-3">
@@ -11,18 +11,19 @@
 </nav>
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="h3 mb-0">Inscripciones — {{ comp.name }}</h1>
+  <h1 class="h3 mb-0">Inscripciones &mdash; {{ comp.name }}</h1>
   <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addModal">
-    <i class="bi bi-plus-circle"></i> Añadir entrada
+    <i class="bi bi-plus-circle"></i> A&ntilde;adir entrada
   </button>
 </div>
 
 <!-- Filters -->
 <div class="row g-2 mb-3">
   <div class="col-sm-4">
-    <input type="text" id="filterName" class="form-control form-control-sm" placeholder="Filtrar por nombre o club…">
+    <input type="text" id="filterName" class="form-control form-control-sm"
+           placeholder="Filtrar por nombre o club...">
   </div>
-  <div class="col-sm-3">
+  <div class="col-sm-4">
     <select id="filterEvent" class="form-select form-select-sm">
       <option value="">Todas las pruebas</option>
       {% set seen = [] %}
@@ -30,7 +31,7 @@
         {% if e.event_number not in seen %}
           {% set _ = seen.append(e.event_number) %}
           <option value="{{ e.event_number }}">
-            Pr.{{ e.event_number }} – {{ e.gender }} {{ e.distance }}m {{ e.stroke }}{% if e.relay %} (relevo){% endif %}
+            Pr.{{ e.event_number }} &ndash; {{ e.gender }} {{ e.distance }}m {{ e.stroke }}{% if e.relay %} (relevo){% endif %}
           </option>
         {% endif %}
       {% endfor %}
@@ -49,7 +50,7 @@
         <th>Prueba</th>
         <th>#</th>
         <th>Nadador</th>
-        <th>Año</th>
+        <th>A&ntilde;o</th>
         <th>Club</th>
         <th>Pisc.</th>
         <th>M.Ponderada</th>
@@ -62,13 +63,15 @@
           class="{% if e.weighted_time is none %}table-warning{% endif %}">
         <td class="text-muted small">
           Pr.{{ e.event_number }}<br>
-          <span class="badge bg-secondary">{{ e.gender }} {{ e.distance }}m {{ e.stroke }}{% if e.relay %} ×{% endif %}</span>
+          <span class="badge bg-secondary">
+            {{ e.gender }} {{ e.distance }}m {{ e.stroke }}{% if e.relay %} &times;{% endif %}
+          </span>
         </td>
-        <td class="cell-seq">{{ e.seq }}</td>
+        <td>{{ e.seq }}</td>
         <td>
           <span class="cell-display">{{ e.swimmer_name }}</span>
           <input class="form-control form-control-sm cell-input d-none" name="swimmer_name"
-                 value="{{ e.swimmer_name }}">
+                 value="{{ e.swimmer_name | e }}">
         </td>
         <td>
           <span class="cell-display">{{ e.year }}</span>
@@ -78,20 +81,23 @@
         <td>
           <span class="cell-display">{{ e.club }}</span>
           <input class="form-control form-control-sm cell-input d-none" name="club"
-                 value="{{ e.club }}">
+                 value="{{ e.club | e }}">
         </td>
         <td>
-          <span class="cell-display">{{ e.pool_length or '—' }}</span>
-          <select class="form-select form-select-sm cell-input d-none" name="pool_length" style="width:70px">
-            <option value="" {% if not e.pool_length %}selected{% endif %}>—</option>
+          <span class="cell-display">{{ e.pool_length or '&mdash;' }}</span>
+          <select class="form-select form-select-sm cell-input d-none" name="pool_length"
+                  style="width:75px">
+            <option value="" {% if not e.pool_length %}selected{% endif %}>--</option>
             <option value="25m" {% if e.pool_length == '25m' %}selected{% endif %}>25m</option>
             <option value="50m" {% if e.pool_length == '50m' %}selected{% endif %}>50m</option>
           </select>
         </td>
         <td class="font-monospace">
-          <span class="cell-display">{{ e.weighted_time | fmt_time }}</span>
+          <span class="cell-display">
+            {% if e.weighted_time is not none %}{{ e.weighted_time | fmt_time }}{% else %}&mdash;{% endif %}
+          </span>
           <input class="form-control form-control-sm cell-input d-none" name="weighted_time"
-                 value="{{ e.weighted_time | fmt_time if e.weighted_time is not none else '' }}"
+                 value="{% if e.weighted_time is not none %}{{ e.weighted_time | fmt_time }}{% endif %}"
                  placeholder="M:SS.cc" style="width:90px">
         </td>
         <td class="text-center">
@@ -113,18 +119,21 @@
     </tbody>
   </table>
 </div>
+{% if not entries %}
+<p class="text-muted text-center py-4">No hay inscripciones cargadas para esta competicion.</p>
+{% endif %}
 
 <!-- Add entry modal -->
 <div class="modal fade" id="addModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">Añadir inscripción manualmente</h5>
+        <h5 class="modal-title">A&ntilde;adir inscripcion manual</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
         <div class="mb-2">
-          <label class="form-label small">Nº Prueba</label>
+          <label class="form-label small">N&ordm; Prueba</label>
           <input type="number" id="add-event" class="form-control form-control-sm" min="1">
         </div>
         <div class="mb-2">
@@ -133,13 +142,13 @@
         </div>
         <div class="row g-2 mb-2">
           <div class="col">
-            <label class="form-label small">Año nac.</label>
+            <label class="form-label small">A&ntilde;o nac.</label>
             <input type="text" id="add-year" class="form-control form-control-sm" placeholder="06">
           </div>
           <div class="col">
             <label class="form-label small">Piscina</label>
             <select id="add-pool" class="form-select form-select-sm">
-              <option value="">—</option>
+              <option value="">--</option>
               <option value="25m">25m</option>
               <option value="50m">50m</option>
             </select>
@@ -151,12 +160,14 @@
         </div>
         <div class="mb-2">
           <label class="form-label small">M.Ponderada (M:SS.cc)</label>
-          <input type="text" id="add-time" class="form-control form-control-sm" placeholder="1:47.15">
+          <input type="text" id="add-time" class="form-control form-control-sm"
+                 placeholder="1:47.15">
         </div>
         <div id="add-error" class="text-danger small d-none"></div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-secondary btn-sm"
+                data-bs-dismiss="modal">Cancelar</button>
         <button type="button" class="btn btn-success btn-sm" id="addSaveBtn">Guardar</button>
       </div>
     </div>
@@ -174,9 +185,8 @@ function applyFilters() {
   const ev = document.getElementById('filterEvent').value;
   let count = 0;
   document.querySelectorAll('#entriesTable tbody tr').forEach(tr => {
-    const text    = tr.textContent.toLowerCase();
     const evMatch = !ev || tr.dataset.event === ev;
-    const qMatch  = !q  || text.includes(q);
+    const qMatch  = !q  || tr.textContent.toLowerCase().includes(q);
     tr.style.display = (evMatch && qMatch) ? '' : 'none';
     if (evMatch && qMatch) count++;
   });
@@ -186,18 +196,14 @@ document.getElementById('filterName').addEventListener('input', applyFilters);
 document.getElementById('filterEvent').addEventListener('change', applyFilters);
 
 // ---- Inline edit ----
-document.querySelectorAll('.btn-edit').forEach(btn => {
-  btn.addEventListener('click', () => toggleEdit(btn.closest('tr'), true));
-});
-document.querySelectorAll('.btn-cancel').forEach(btn => {
-  btn.addEventListener('click', () => toggleEdit(btn.closest('tr'), false));
-});
-document.querySelectorAll('.btn-save').forEach(btn => {
-  btn.addEventListener('click', () => saveRow(btn.closest('tr')));
-});
-document.querySelectorAll('.btn-delete').forEach(btn => {
-  btn.addEventListener('click', () => deleteRow(btn.closest('tr')));
-});
+document.querySelectorAll('.btn-edit').forEach(btn =>
+  btn.addEventListener('click', () => toggleEdit(btn.closest('tr'), true)));
+document.querySelectorAll('.btn-cancel').forEach(btn =>
+  btn.addEventListener('click', () => toggleEdit(btn.closest('tr'), false)));
+document.querySelectorAll('.btn-save').forEach(btn =>
+  btn.addEventListener('click', () => saveRow(btn.closest('tr'))));
+document.querySelectorAll('.btn-delete').forEach(btn =>
+  btn.addEventListener('click', () => deleteRow(btn.closest('tr'))));
 
 function toggleEdit(tr, editing) {
   tr.querySelectorAll('.cell-display').forEach(el => el.classList.toggle('d-none', editing));
@@ -212,38 +218,27 @@ async function saveRow(tr) {
   const id = tr.dataset.id;
   const fd = new FormData();
   tr.querySelectorAll('.cell-input').forEach(inp => fd.append(inp.name, inp.value));
-  const res = await fetch(`${BASE}/${id}`, { method: 'POST', body: fd });
+  const res  = await fetch(`${BASE}/${id}`, { method: 'POST', body: fd });
   const data = await res.json();
   if (!data.ok) { alert('Error al guardar'); return; }
-  // Update display cells
-  tr.querySelector('[name=swimmer_name]').closest('td')
-    .querySelector('.cell-display').textContent =
-    tr.querySelector('[name=swimmer_name]').value;
-  tr.querySelector('[name=year]').closest('td')
-    .querySelector('.cell-display').textContent =
-    tr.querySelector('[name=year]').value;
-  tr.querySelector('[name=club]').closest('td')
-    .querySelector('.cell-display').textContent =
-    tr.querySelector('[name=club]').value;
-  const pl = tr.querySelector('[name=pool_length]').value;
-  tr.querySelector('[name=pool_length]').closest('td')
-    .querySelector('.cell-display').textContent = pl || '—';
-  const t = tr.querySelector('[name=weighted_time]').value;
-  tr.querySelector('[name=weighted_time]').closest('td')
-    .querySelector('.cell-display').textContent = t || '—';
+  // Update display spans
+  [['swimmer_name','swimmer_name'],['year','year'],['club','club']].forEach(([name, _]) => {
+    const inp = tr.querySelector(`[name="${name}"]`);
+    inp.closest('td').querySelector('.cell-display').textContent = inp.value;
+  });
+  const plSel = tr.querySelector('[name="pool_length"]');
+  plSel.closest('td').querySelector('.cell-display').textContent = plSel.value || '--';
+  const tInp = tr.querySelector('[name="weighted_time"]');
+  tInp.closest('td').querySelector('.cell-display').textContent = tInp.value || '--';
   tr.classList.remove('table-warning');
   toggleEdit(tr, false);
 }
 
 async function deleteRow(tr) {
-  if (!confirm('¿Eliminar esta inscripción?')) return;
-  const id = tr.dataset.id;
-  const res = await fetch(`${BASE}/${id}/delete`, { method: 'POST' });
+  if (!confirm('Eliminar esta inscripcion?')) return;
+  const res  = await fetch(`${BASE}/${tr.dataset.id}/delete`, { method: 'POST' });
   const data = await res.json();
-  if (data.ok) {
-    tr.remove();
-    applyFilters();
-  }
+  if (data.ok) { tr.remove(); applyFilters(); }
 }
 
 // ---- Add modal ----
@@ -253,10 +248,10 @@ document.getElementById('addSaveBtn').addEventListener('click', async () => {
   const fd = new FormData();
   fd.append('event_number', document.getElementById('add-event').value);
   fd.append('swimmer_name', document.getElementById('add-name').value);
-  fd.append('year',         document.getElementById('add-year').value);
-  fd.append('club',         document.getElementById('add-club').value);
-  fd.append('pool_length',  document.getElementById('add-pool').value);
-  fd.append('weighted_time',document.getElementById('add-time').value);
+  fd.append('year',          document.getElementById('add-year').value);
+  fd.append('club',          document.getElementById('add-club').value);
+  fd.append('pool_length',   document.getElementById('add-pool').value);
+  fd.append('weighted_time', document.getElementById('add-time').value);
   const res  = await fetch(`${BASE}/add`, { method: 'POST', body: fd });
   const data = await res.json();
   if (data.error) {
@@ -264,13 +259,12 @@ document.getElementById('addSaveBtn').addEventListener('click', async () => {
     errEl.classList.remove('d-none');
     return;
   }
-  // Reload page to show new row
   location.reload();
 });
 </script>
 
 <style>
-.btn-xs { padding: 0.1rem 0.35rem; font-size: .75rem; }
+.btn-xs { padding: .1rem .35rem; font-size: .75rem; }
 .sticky-top { top: 56px; }
 </style>
 {% endblock %}

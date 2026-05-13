@@ -367,20 +367,31 @@ def upload_results(comp_id: int):
 def entries_view(comp_id: int):
     comp = get_competition(comp_id)
     if comp is None:
-        flash('Competición no encontrada.', 'danger')
+        flash('Competicion no encontrada.', 'danger')
         return redirect(url_for('index'))
     db = get_db()
+    # Use 0 AS relay fallback if column does not exist yet (pre-migration DBs)
+    ev_cols = {r[1] for r in db.execute('PRAGMA table_info(events)').fetchall()}
+    relay_col = 'ev.relay' if 'relay' in ev_cols else '0 AS relay'
     rows = db.execute(
-        '''SELECT e.id, e.seq, e.swimmer_name, e.year, e.club,
-                  e.pool_length, e.weighted_time,
-                  ev.number AS event_number, ev.gender, ev.distance, ev.stroke, ev.relay
-           FROM entries e
-           JOIN events ev ON e.event_id = ev.id
-           WHERE ev.competition_id = ?
-           ORDER BY ev.number, e.seq''',
+        f'''SELECT e.id, e.seq, e.swimmer_name, e.year, e.club,
+                   e.pool_length, e.weighted_time,
+                   ev.number AS event_number, ev.gender, ev.distance, ev.stroke, {relay_col}
+            FROM entries e
+            JOIN events ev ON e.event_id = ev.id
+            WHERE ev.competition_id = ?
+            ORDER BY ev.number, e.seq''',
         (comp_id,)
     ).fetchall()
-    return render_template('entries.html', comp=comp, entries=[dict(r) for r in rows])
+    entries = []
+    for r in rows:
+        d = dict(r)
+        # Decode any bytes values that might be stored from older DB versions
+        for k, v in d.items():
+            if isinstance(v, bytes):
+                d[k] = v.decode('latin-1')
+        entries.append(d)
+    return render_template('entries.html', comp=comp, entries=entries)
 
 
 @app.route('/competition/<int:comp_id>/entries/<int:entry_id>', methods=['POST'])
