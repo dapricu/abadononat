@@ -506,7 +506,116 @@ def add_entry(comp_id: int):
     return jsonify({'ok': True, 'id': cur.lastrowid})
 
 
-@app.route('/competition/<int:comp_id>/analysis')
+@app.route('/competition/<int:comp_id>/results')
+def results_view(comp_id: int):
+    comp = get_competition(comp_id)
+    if comp is None:
+        flash('Competicion no encontrada.', 'danger')
+        return redirect(url_for('index'))
+    db = get_db()
+    ev_cols = {r[1] for r in db.execute('PRAGMA table_info(events)').fetchall()}
+    relay_col = 'ev.relay' if 'relay' in ev_cols else '0 AS relay'
+    rows = db.execute(
+        f'''SELECT r.id, r.position, r.swimmer_name, r.year, r.club,
+                   r.result_time, r.points, r.dsq,
+                   ev.number AS event_number, ev.gender, ev.distance, ev.stroke, {relay_col}
+            FROM results r
+            JOIN events ev ON r.event_id = ev.id
+            WHERE ev.competition_id = ?
+            ORDER BY ev.number, r.position''',
+        (comp_id,)
+    ).fetchall()
+    results = []
+    for r in rows:
+        d = dict(r)
+        for k, v in d.items():
+            if isinstance(v, bytes):
+                d[k] = v.decode('latin-1')
+        results.append(d)
+
+    # Detect pool mismatch: entry marks from a different pool type than the competition
+    pool_type = comp['pool_type'] or ''
+    mismatch_keys: set[tuple] = set()
+    if pool_type:
+        en_cols = {r[1] for r in db.execute('PRAGMA table_info(entries)').fetchall()}
+        res_col = 'e.reserve' if 'reserve' in en_cols else '0 AS reserve'
+        entry_rows = db.execute(
+            f'''SELECT e.pool_length, e.swimmer_name_normalized,
+                       ev.number AS event_number
+                FROM entries e
+                JOIN events ev ON e.event_id = ev.id
+                WHERE ev.competition_id = ? AND e.pool_length != '' AND e.pool_length != ?''',
+            (comp_id, pool_type)
+        ).fetchall()
+        mismatch_keys = {(r['event_number'], r['swimmer_name_normalized']) for r in entry_rows}
+
+    for r in results:
+        key = (r['event_number'], r.get('swimmer_name_normalized', ''))
+        r['pool_mismatch'] = key in mismatch_keys
+
+    stats = {
+        'total':        len(results),
+        'dsq':          sum(1 for r in results if r.get('dsq')),
+        'no_time':      sum(1 for r in results if r.get('result_time') is None and not r.get('dsq')),
+        'pool_mismatch': sum(1 for r in results if r.get('pool_mismatch')),
+    }
+    return render_template('results.html', comp=comp, results=results, stats=stats)
+
+
+@app.route('/competition/<int:comp_id>/results/<int:result_id>', methods=['POST'])
+def update_result(comp_id: int, result_id: int):
+    db = get_db()
+    swimmer_name = request.form.get('swimmer_name', '').strip()
+    year         = request.form.get('year', '').strip()
+    club         = request.form.get('club', '').strip().rstrip('- ').strip()
+    time_str     = request.form.get('result_time', '').strip()
+    pos_str      = request.form.get('position', '').strip()
+
+    from pdf_parser import time_to_seconds, normalize_name
+    result_time = time_to_seconds(time_str) if time_str else None
+    position    = int(pos_str) if pos_str.isdigit() else None
+
+    db.execute(
+        '''UPDATE results SET swimmer_name=?, swimmer_name_normalized=?,
+           year=?, club=?, result_time=?, position=? WHERE id=?''',
+        (swimmer_name, normalize_name(swimmer_name),
+         year, club, result_time, position, result_id)
+    )
+    db.commit()
+    return jsonify({'ok': True})
+
+
+@app.route('/competition/<int:comp_id>/results/<int:result_id>/delete', methods=['POST'])
+def delete_result(comp_id: int, result_id: int):
+    db = get_db()
+    db.execute('DELETE FROM results WHERE id=?', (result_id,))
+    db.commit()
+    return jsonify({'ok': True})
+
+
+@app.route('/competition/<int:comp_id>/results/bulk-delete', methods=['POST'])
+def bulk_delete_results(comp_id: int):
+    db = get_db()
+    preset = request.form.get('preset', '')
+    if preset == 'dsq':
+        db.execute(
+            '''DELETE FROM results WHERE id IN (
+               SELECT r.id FROM results r
+               JOIN events ev ON r.event_id = ev.id
+               WHERE ev.competition_id = ? AND r.dsq = 1)''',
+            (comp_id,)
+        )
+        db.commit()
+        return jsonify({'ok': True})
+    data = request.get_json(silent=True) or {}
+    ids = [int(i) for i in data.get('ids', []) if str(i).isdigit()]
+    if not ids:
+        return jsonify({'ok': False, 'error': 'No IDs provided'}), 400
+    db.execute(f'DELETE FROM results WHERE id IN ({",".join("?" * len(ids))})', ids)
+    db.commit()
+    return jsonify({'ok': True, 'deleted': len(ids)})
+
+
 def analysis(comp_id: int):
     comp = get_competition(comp_id)
     if comp is None:

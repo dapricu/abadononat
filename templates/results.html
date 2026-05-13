@@ -1,0 +1,329 @@
+{% extends 'base.html' %}
+{% block title %}Resultados &ndash; {{ comp.name }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Competiciones</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('competition', comp_id=comp.id) }}">{{ comp.name }}</a></li>
+    <li class="breadcrumb-item active">Resultados</li>
+  </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">Resultados &mdash; {{ comp.name }}</h1>
+  {% if comp.pool_type %}
+    <span class="badge bg-info text-dark fs-6">Piscina {{ comp.pool_type }}</span>
+  {% else %}
+    <span class="badge bg-warning text-dark fs-6">Piscina no definida</span>
+  {% endif %}
+</div>
+
+{% if not comp.pool_type %}
+<div class="alert alert-warning py-2">
+  <i class="bi bi-exclamation-triangle"></i>
+  No hay tipo de piscina definido para esta competicion. El marcado de
+  <strong>Pisc. diferente</strong> no funcionara hasta que lo establezcas
+  en <a href="{{ url_for('competition', comp_id=comp.id) }}">Editar competicion</a>.
+</div>
+{% endif %}
+
+<!-- Stats bar -->
+<div class="row g-2 mb-3">
+  <div class="col-6 col-sm-3 col-md-2">
+    <div class="card text-center py-2 px-1">
+      <div class="fs-4 fw-bold">{{ stats.total }}</div>
+      <div class="text-muted small">Total</div>
+    </div>
+  </div>
+  <div class="col-6 col-sm-3 col-md-2">
+    <div class="card text-center py-2 px-1 border-danger">
+      <div class="fs-4 fw-bold text-danger">{{ stats.dsq }}</div>
+      <div class="text-muted small">DSQ / DNS</div>
+    </div>
+  </div>
+  <div class="col-6 col-sm-3 col-md-2">
+    <div class="card text-center py-2 px-1 border-warning">
+      <div class="fs-4 fw-bold text-warning">{{ stats.no_time }}</div>
+      <div class="text-muted small">Sin tiempo</div>
+    </div>
+  </div>
+  <div class="col-6 col-sm-3 col-md-2">
+    <div class="card text-center py-2 px-1 border-secondary">
+      <div class="fs-4 fw-bold text-secondary">{{ stats.pool_mismatch }}</div>
+      <div class="text-muted small">Pisc. diferente</div>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk actions -->
+<div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+  <button class="btn btn-outline-danger btn-sm" id="btnDeleteSelected" disabled>
+    <i class="bi bi-trash"></i> Eliminar seleccionados (<span id="selCount">0</span>)
+  </button>
+  <button class="btn btn-outline-danger btn-sm" id="btnDeleteDsq"
+          {% if stats.dsq == 0 %}disabled{% endif %}>
+    <i class="bi bi-x-circle"></i> Borrar DSQ/DNS ({{ stats.dsq }})
+  </button>
+</div>
+
+<!-- Filters -->
+<div class="row g-2 mb-2">
+  <div class="col-sm-4">
+    <input type="text" id="filterName" class="form-control form-control-sm"
+           placeholder="Filtrar por nombre o club...">
+  </div>
+  <div class="col-sm-4">
+    <select id="filterEvent" class="form-select form-select-sm">
+      <option value="">Todas las pruebas</option>
+      {% set seen = [] %}
+      {% for r in results %}
+        {% if r.event_number not in seen %}
+          {% set _ = seen.append(r.event_number) %}
+          <option value="{{ r.event_number }}">
+            Pr.{{ r.event_number }} &ndash; {{ r.gender }} {{ r.distance }}m {{ r.stroke }}{% if r.relay %} (relevo){% endif %}
+          </option>
+        {% endif %}
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-sm-auto">
+    <select id="filterFlag" class="form-select form-select-sm">
+      <option value="">Todos</option>
+      <option value="mismatch">Solo Pisc. diferente</option>
+      <option value="dsq">Solo DSQ/DNS</option>
+      <option value="ok">Solo v&aacute;lidos</option>
+    </select>
+  </div>
+  <div class="col-sm-auto ms-auto text-muted small pt-1">
+    <span id="rowCount">{{ results|length }}</span> resultados
+  </div>
+</div>
+
+<!-- Table -->
+<div class="table-responsive">
+  <table class="table table-sm table-hover table-bordered mb-0" id="resultsTable">
+    <thead>
+      <tr>
+        <th class="sticky-header" style="width:32px">
+          <input type="checkbox" id="selectAll" class="form-check-input">
+        </th>
+        <th class="sticky-header">Prueba</th>
+        <th class="sticky-header">Pos.</th>
+        <th class="sticky-header">Nadador</th>
+        <th class="sticky-header">A&ntilde;o</th>
+        <th class="sticky-header">Club</th>
+        <th class="sticky-header">Tiempo</th>
+        <th class="sticky-header" style="width:90px"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in results %}
+      <tr data-id="{{ r.id }}"
+          data-event="{{ r.event_number }}"
+          data-dsq="{{ '1' if r.dsq else '0' }}"
+          data-mismatch="{{ '1' if r.pool_mismatch else '0' }}"
+          class="{% if r.dsq %}table-danger{% elif r.pool_mismatch %}table-secondary{% endif %}">
+        <td>
+          <input type="checkbox" class="form-check-input row-check" value="{{ r.id }}">
+        </td>
+        <td class="text-muted small">
+          Pr.{{ r.event_number }}<br>
+          <span class="badge bg-secondary">
+            {{ r.gender }} {{ r.distance }}m {{ r.stroke }}{% if r.relay %} &times;{% endif %}
+          </span>
+        </td>
+        <td>
+          <span class="cell-display">{{ r.position if r.position else '&mdash;' }}</span>
+          <input class="form-control form-control-sm cell-input d-none" name="position"
+                 value="{{ r.position or '' }}" style="width:55px" type="number" min="1">
+        </td>
+        <td>
+          <span class="cell-display">
+            {{ r.swimmer_name }}
+            {% if r.dsq %}
+              <span class="badge bg-danger ms-1">DSQ/DNS</span>
+            {% endif %}
+            {% if r.pool_mismatch %}
+              <span class="badge bg-secondary ms-1" title="Marca de inscripcion en tipo de piscina diferente &mdash; excluido del analisis">
+                <i class="bi bi-rulers"></i> Pisc. diferente
+              </span>
+            {% endif %}
+          </span>
+          <input class="form-control form-control-sm cell-input d-none" name="swimmer_name"
+                 value="{{ r.swimmer_name | e }}">
+        </td>
+        <td>
+          <span class="cell-display">{{ r.year }}</span>
+          <input class="form-control form-control-sm cell-input d-none" name="year"
+                 value="{{ r.year }}" style="width:60px">
+        </td>
+        <td>
+          <span class="cell-display">{{ r.club }}</span>
+          <input class="form-control form-control-sm cell-input d-none" name="club"
+                 value="{{ r.club | e }}">
+        </td>
+        <td class="font-monospace">
+          <span class="cell-display">
+            {% if r.result_time is not none %}{{ r.result_time | fmt_time }}{% else %}&mdash;{% endif %}
+          </span>
+          <input class="form-control form-control-sm cell-input d-none" name="result_time"
+                 value="{% if r.result_time is not none %}{{ r.result_time | fmt_time }}{% endif %}"
+                 placeholder="M:SS.cc" style="width:90px">
+        </td>
+        <td class="text-center">
+          <button class="btn btn-xs btn-outline-primary btn-edit" title="Editar">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <button class="btn btn-xs btn-success btn-save d-none" title="Guardar">
+            <i class="bi bi-check-lg"></i>
+          </button>
+          <button class="btn btn-xs btn-secondary btn-cancel d-none" title="Cancelar">
+            <i class="bi bi-x-lg"></i>
+          </button>
+          <button class="btn btn-xs btn-outline-danger btn-delete" title="Eliminar">
+            <i class="bi bi-trash"></i>
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% if not results %}
+<p class="text-muted text-center py-4">No hay resultados cargados para esta competicion.</p>
+{% endif %}
+
+<!-- Legend -->
+<div class="mt-3 d-flex flex-wrap gap-3 text-muted small">
+  <span><span class="badge bg-danger">&nbsp;</span> DSQ / DNS &mdash; descalificado o no presentado</span>
+  <span><span class="badge bg-secondary">&nbsp;</span> Pisc. diferente &mdash; la marca de inscripci&oacute;n era de otro tipo de piscina; excluido del an&aacute;lisis de mejora</span>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const BASE = '{{ url_for("results_view", comp_id=comp.id) }}';
+
+// ---- Filtering ----
+function applyFilters() {
+  const q    = document.getElementById('filterName').value.toLowerCase();
+  const ev   = document.getElementById('filterEvent').value;
+  const flag = document.getElementById('filterFlag').value;
+  let count  = 0;
+  document.querySelectorAll('#resultsTable tbody tr').forEach(tr => {
+    const evMatch   = !ev   || tr.dataset.event === ev;
+    const qMatch    = !q    || tr.textContent.toLowerCase().includes(q);
+    let flagMatch   = true;
+    if (flag === 'mismatch') flagMatch = tr.dataset.mismatch === '1';
+    else if (flag === 'dsq')  flagMatch = tr.dataset.dsq === '1';
+    else if (flag === 'ok')   flagMatch = tr.dataset.dsq === '0' && tr.dataset.mismatch === '0';
+    const vis = evMatch && qMatch && flagMatch;
+    tr.style.display = vis ? '' : 'none';
+    if (vis) count++;
+  });
+  document.getElementById('rowCount').textContent = count;
+}
+document.getElementById('filterName').addEventListener('input', applyFilters);
+document.getElementById('filterEvent').addEventListener('change', applyFilters);
+document.getElementById('filterFlag').addEventListener('change', applyFilters);
+
+// ---- Checkbox multi-select ----
+function updateSelCount() {
+  const n = document.querySelectorAll('.row-check:checked').length;
+  document.getElementById('selCount').textContent = n;
+  document.getElementById('btnDeleteSelected').disabled = n === 0;
+}
+
+document.getElementById('selectAll').addEventListener('change', function() {
+  document.querySelectorAll('#resultsTable tbody tr').forEach(tr => {
+    if (tr.style.display !== 'none') {
+      tr.querySelector('.row-check').checked = this.checked;
+    }
+  });
+  updateSelCount();
+});
+document.querySelectorAll('.row-check').forEach(cb =>
+  cb.addEventListener('change', updateSelCount));
+
+// ---- Inline edit ----
+document.querySelectorAll('.btn-edit').forEach(btn =>
+  btn.addEventListener('click', () => toggleEdit(btn.closest('tr'), true)));
+document.querySelectorAll('.btn-cancel').forEach(btn =>
+  btn.addEventListener('click', () => toggleEdit(btn.closest('tr'), false)));
+document.querySelectorAll('.btn-save').forEach(btn =>
+  btn.addEventListener('click', () => saveRow(btn.closest('tr'))));
+document.querySelectorAll('.btn-delete').forEach(btn =>
+  btn.addEventListener('click', () => deleteRow(btn.closest('tr'))));
+
+function toggleEdit(tr, editing) {
+  tr.querySelectorAll('.cell-display').forEach(el => el.classList.toggle('d-none', editing));
+  tr.querySelectorAll('.cell-input').forEach(el => el.classList.toggle('d-none', !editing));
+  tr.querySelector('.btn-edit').classList.toggle('d-none', editing);
+  tr.querySelector('.btn-save').classList.toggle('d-none', !editing);
+  tr.querySelector('.btn-cancel').classList.toggle('d-none', !editing);
+  tr.querySelector('.btn-delete').classList.toggle('d-none', editing);
+}
+
+async function saveRow(tr) {
+  const id = tr.dataset.id;
+  const fd = new FormData();
+  tr.querySelectorAll('.cell-input').forEach(inp => fd.append(inp.name, inp.value));
+  const res  = await fetch(`${BASE}/${id}`, { method: 'POST', body: fd });
+  const data = await res.json();
+  if (!data.ok) { alert('Error al guardar'); return; }
+  [['swimmer_name'], ['year'], ['club']].forEach(([name]) => {
+    const inp = tr.querySelector(`[name="${name}"]`);
+    inp.closest('td').querySelector('.cell-display').textContent = inp.value;
+  });
+  const posInp = tr.querySelector('[name="position"]');
+  posInp.closest('td').querySelector('.cell-display').textContent = posInp.value || '--';
+  const tInp = tr.querySelector('[name="result_time"]');
+  tInp.closest('td').querySelector('.cell-display').textContent = tInp.value || '--';
+  toggleEdit(tr, false);
+}
+
+async function deleteRow(tr) {
+  if (!confirm('Eliminar este resultado?')) return;
+  const res  = await fetch(`${BASE}/${tr.dataset.id}/delete`, { method: 'POST' });
+  const data = await res.json();
+  if (data.ok) { tr.remove(); applyFilters(); updateSelCount(); }
+}
+
+// ---- Bulk delete selected ----
+document.getElementById('btnDeleteSelected').addEventListener('click', async () => {
+  const ids = [...document.querySelectorAll('.row-check:checked')].map(cb => cb.value);
+  if (!ids.length) return;
+  if (!confirm(`Eliminar ${ids.length} resultados seleccionados?`)) return;
+  const res  = await fetch(`${BASE}/bulk-delete`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ids})
+  });
+  const data = await res.json();
+  if (data.ok) location.reload();
+  else alert('Error al eliminar');
+});
+
+document.getElementById('btnDeleteDsq').addEventListener('click', async () => {
+  if (!confirm('Eliminar todos los registros DSQ/DNS?')) return;
+  const fd = new FormData();
+  fd.append('preset', 'dsq');
+  const res  = await fetch(`${BASE}/bulk-delete`, { method: 'POST', body: fd });
+  const data = await res.json();
+  if (data.ok) location.reload();
+  else alert('Error al eliminar');
+});
+</script>
+
+<style>
+.btn-xs { padding: .1rem .35rem; font-size: .75rem; }
+.sticky-header {
+  position: sticky;
+  top: 56px;
+  z-index: 2;
+  background-color: #212529;
+  color: #fff;
+}
+</style>
+{% endblock %}
