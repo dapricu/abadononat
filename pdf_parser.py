@@ -164,7 +164,7 @@ def _parse_inscription_row(chars: list, event: dict) -> dict | None:
     year_match = re.search(r'\d{2,4}', year)
     year = year_match.group(0) if year_match else ''
 
-    club = _chars_to_text(club_chars).strip()
+    club = _chars_to_text(club_chars).strip().rstrip('- ').strip()
 
     # Pool length from Pisc. column
     pisc_raw = _chars_to_text(pisc_chars).strip()
@@ -294,10 +294,9 @@ def _parse_result_row(chars: list, event: dict) -> dict | None:
     # After position, the rest: "NAME, Firstname<year><club><points>"
     after_pos = reg_text[pos_match.end():].strip() if pos_match else reg_text
 
-    # Year: 2-digit year embedded somewhere, typically after name
-    # Strategy: split on digit runs; the 2-digit year follows the name
-    # We look for the first standalone 2-digit number (birth year 90-20)
-    name_year_match = re.match(r'^(.*?)(\d{2})([A-Z].*)?$', after_pos)
+    # Year: 2-digit birth year right after name, isolated (not part of a longer number).
+    # Use negative lookbehind/lookahead so we match exactly 2 digits not adjacent to digits.
+    name_year_match = re.match(r'^(.*?)(?<!\d)(\d{2})(?!\d)([A-Z].*)$', after_pos, re.DOTALL)
     if name_year_match:
         raw_name = name_year_match.group(1).strip().rstrip(',').strip()
         year = name_year_match.group(2)
@@ -311,9 +310,9 @@ def _parse_result_row(chars: list, event: dict) -> dict | None:
     if not swimmer_name:
         return None
 
-    # Club: first part of rest before digits (points/splits)
+    # Club: letters, spaces, dots, hyphens before the first digit run
     club_match = re.match(r'^([A-Za-záéíóúÁÉÍÓÚüÜñÑ\s\.\-]+)', rest)
-    club = club_match.group(1).strip() if club_match else ''
+    club = club_match.group(1).strip().rstrip('- ').strip() if club_match else ''
 
     # Points: first number after club
     points_match = re.search(r'(\d+[,\.]\d+)', rest[len(club):])

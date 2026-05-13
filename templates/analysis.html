@@ -2,6 +2,42 @@
 {% block title %}Análisis – {{ comp.name }}{% endblock %}
 
 {% block content %}
+{# ---- Jinja macros (must be defined before use within the block) ---- #}
+{% macro _stats_table(by_group) %}
+<div class="table-responsive">
+  <table class="table table-sm table-bordered align-middle">
+    <thead class="table-secondary">
+      <tr>
+        <th>Grupo</th><th>N</th><th>% mejora</th>
+        <th>Media (s)</th><th>Mediana (s)</th><th>σ (s)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for group, s in by_group.items() | sort %}
+      <tr>
+        <td class="fw-semibold">{{ group }}</td>
+        <td>{{ s.count }}</td>
+        <td>
+          <div class="progress" style="min-width:80px;height:18px">
+            <div class="progress-bar bg-success" style="width:{{ s.pct_improved }}%">
+              {{ s.pct_improved }}%
+            </div>
+          </div>
+        </td>
+        <td class="{% if s.mean_improvement_sec > 0 %}text-success{% elif s.mean_improvement_sec < 0 %}text-danger{% endif %}">
+          {{ s.mean_improvement_sec | fmt_sign }}
+        </td>
+        <td class="{% if s.median_improvement_sec > 0 %}text-success{% elif s.median_improvement_sec < 0 %}text-danger{% endif %}">
+          {{ s.median_improvement_sec | fmt_sign }}
+        </td>
+        <td>{{ s.std_improvement_sec | round(3) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endmacro %}
+
 <nav aria-label="breadcrumb" class="mb-3">
   <ol class="breadcrumb">
     <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Competiciones</a></li>
@@ -144,43 +180,6 @@
   </div>
 
 </div>
-
-{# ---- Jinja macros ---- #}
-
-{% macro _stats_table(by_group) %}
-<div class="table-responsive">
-  <table class="table table-sm table-bordered align-middle">
-    <thead class="table-secondary">
-      <tr>
-        <th>Grupo</th><th>N</th><th>% mejora</th>
-        <th>Media (s)</th><th>Mediana (s)</th><th>σ (s)</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for group, s in by_group.items() | sort %}
-      <tr>
-        <td class="fw-semibold">{{ group }}</td>
-        <td>{{ s.count }}</td>
-        <td>
-          <div class="progress" style="min-width:80px;height:18px">
-            <div class="progress-bar bg-success" style="width:{{ s.pct_improved }}%">
-              {{ s.pct_improved }}%
-            </div>
-          </div>
-        </td>
-        <td class="{% if s.mean_improvement_sec > 0 %}text-success{% elif s.mean_improvement_sec < 0 %}text-danger{% endif %}">
-          {{ s.mean_improvement_sec | fmt_sign }}
-        </td>
-        <td class="{% if s.median_improvement_sec > 0 %}text-success{% elif s.median_improvement_sec < 0 %}text-danger{% endif %}">
-          {{ s.median_improvement_sec | fmt_sign }}
-        </td>
-        <td>{{ s.std_improvement_sec | round(3) }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
-{% endmacro %}
 
 {% endblock %}
 
