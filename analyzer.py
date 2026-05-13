@@ -402,19 +402,20 @@ def compute_copa_classification(all_results: list[dict]) -> dict:
                 prev_copa_pts = COPA_POINTS[pos - 1] if pos <= len(COPA_POINTS) else 0
                 prev_time = r['result_time']
             copa_pts = prev_copa_pts
+            club = (r['club'] or '').rstrip('- ').strip()
 
             annotated.append({
                 'pos': pos,
                 'swimmer_name': r['swimmer_name'],
-                'club': r['club'],
+                'club': club,
                 'year': r.get('year', ''),
                 'result_time': r['result_time'],
                 'division': r.get('division', ''),
                 'copa_points': copa_pts,
             })
 
-            if copa_pts > 0 and r['club']:
-                entry = club_points.setdefault(r['club'], {'total': 0, 'events_scored': 0, 'breakdown': {}})
+            if copa_pts > 0 and club:
+                entry = club_points.setdefault(club, {'total': 0, 'events_scored': 0, 'breakdown': {}})
                 entry['total'] += copa_pts
                 entry['events_scored'] += 1
                 entry['breakdown'][event_key] = entry['breakdown'].get(event_key, 0) + copa_pts

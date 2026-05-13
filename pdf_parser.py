@@ -26,6 +26,11 @@ INS_COL = {
 TIME_RE = re.compile(r'(\d{1,2}:\d{2}\.\d{2}|\d{2}\.\d{2})')
 POOL_RE = re.compile(r'(25|50)\s*m', re.IGNORECASE)
 
+# X threshold for the Tiempo (result time) column in FNCV results PDFs.
+# The column sits at the far right; chars with x0 >= this value belong to it.
+# Adjust if your results PDF uses a different page width/layout.
+RES_TIEMPO_X = 420
+
 # Matches FNCV/Splash Meet Manager event headers, e.g.:
 #   "Prueba 1Masc., 200m LibreAbs."   (main page header, fields concatenated)
 #   "Prueba 2, Fem., 400m Estilos"    (continuation header at top of new page)
@@ -276,8 +281,18 @@ def _parse_result_row(chars: list, event: dict) -> dict | None:
     bold_text = _chars_to_text(bold_chars).strip()
     reg_text  = _chars_to_text(regular_chars).strip()
 
-    # Result time from bold
-    tm = TIME_RE.search(bold_text)
+    # Result time: search in order of reliability.
+    # 1) Bold chars in the Tiempo column (rightmost, avoids picking up split times).
+    # 2) Any bold chars (for events where no split times are bold).
+    # 3) Any chars in the Tiempo column (handles 800m/1500m where the time is
+    #    colored but not bold, or where pdfplumber reports a non-Bold fontname).
+    right_bold = [c for c in bold_chars if c['x0'] >= RES_TIEMPO_X]
+    tm = TIME_RE.search(_chars_to_text(right_bold))
+    if not tm:
+        tm = TIME_RE.search(bold_text)
+    if not tm:
+        right_all = [c for c in chars if c['x0'] >= RES_TIEMPO_X]
+        tm = TIME_RE.search(_chars_to_text(right_all))
     result_time = time_to_seconds(tm.group(0)) if tm else None
 
     # DSQ / DNS rows

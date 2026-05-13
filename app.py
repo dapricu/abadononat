@@ -125,6 +125,9 @@ def _migrate(db: sqlite3.Connection):
     existing = {row[1] for row in db.execute('PRAGMA table_info(competitions)').fetchall()}
     if 'venue' not in existing:
         db.execute("ALTER TABLE competitions ADD COLUMN venue TEXT DEFAULT ''")
+    # Strip trailing dashes/spaces from club names left by earlier parser versions
+    db.execute("UPDATE results SET club = TRIM(RTRIM(club, '- ')) WHERE club GLOB '*-'")
+    db.execute("UPDATE entries  SET club = TRIM(RTRIM(club, '- ')) WHERE club GLOB '*-'")
 
 
 def allowed_file(filename: str) -> bool:
