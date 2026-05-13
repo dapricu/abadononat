@@ -13,7 +13,7 @@ from flask import (
 )
 from werkzeug.utils import secure_filename
 
-from parser import parse_inscriptions, parse_results
+from pdf_parser import parse_inscriptions, parse_results
 from analyzer import analyze, compute_copa_classification, venue_ranking_analysis, seconds_to_time
 
 # ---------------------------------------------------------------------------
