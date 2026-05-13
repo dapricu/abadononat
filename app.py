@@ -616,6 +616,7 @@ def bulk_delete_results(comp_id: int):
     return jsonify({'ok': True, 'deleted': len(ids)})
 
 
+@app.route('/competition/<int:comp_id>/analysis')
 def analysis(comp_id: int):
     comp = get_competition(comp_id)
     if comp is None:
