@@ -23,6 +23,11 @@
     </div>
   </div>
   <div class="d-flex gap-2">
+    {% if n_entries > 0 %}
+    <a href="{{ url_for('entries_view', comp_id=comp.id) }}" class="btn btn-outline-primary">
+      <i class="bi bi-table"></i> Ver inscripciones
+    </a>
+    {% endif %}
     <a href="{{ url_for('analysis', comp_id=comp.id) }}" class="btn btn-success">
       <i class="bi bi-bar-chart-line"></i> Ver análisis
     </a>
@@ -58,7 +63,12 @@
           </div>
         </form>
         {% if n_entries > 0 %}
-          <div class="mt-2 text-success small"><i class="bi bi-check-circle"></i> Archivo cargado</div>
+          <div class="mt-2 d-flex align-items-center gap-2">
+            <span class="text-success small"><i class="bi bi-check-circle"></i> Archivo cargado</span>
+            <a href="{{ url_for('entries_view', comp_id=comp.id) }}" class="btn btn-outline-secondary btn-sm">
+              <i class="bi bi-pencil-square"></i> Revisar y corregir
+            </a>
+          </div>
         {% endif %}
       </div>
     </div>

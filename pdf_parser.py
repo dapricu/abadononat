@@ -19,9 +19,8 @@ INS_COL = {
     'club_end':    343,   # club: 233 <= X < 343 (may overflow into next cols)
     'pisc_start':  377,   # pool type (25m/50m): 377 <= X < 410
     'pisc_end':    410,
-    # M.Ponderada starts at ~414 for short times, but the leading digit of
-    # two-digit minute times (e.g. "15:50.52") can sit at X≈407, so use 405.
-    'mpond_start': 405,
+    # M.Ponderada starts at ~414; revert to 410 to avoid pisc-column overlap
+    'mpond_start': 410,
     'mpond_end':   448,
 }
 
@@ -219,10 +218,13 @@ def _parse_inscription_row(chars: list, event: dict) -> dict | None:
     pm = POOL_RE.search(pisc_raw)
     pool_length = (pm.group(1) + 'm') if pm else ''
 
-    # M.Ponderada
-    mpond_raw = _chars_to_text(mpond_chars).strip()
-    tm = TIME_RE.search(mpond_raw)
-    weighted_time = time_to_seconds(tm.group(0)) if tm else None
+    # M.Ponderada: take the LAST time found anywhere right of the club column.
+    # M.Real sits at ~X=343–377, M.Ponderada at ~X=410–448, so the last
+    # TIME_RE match in that region is always the ponderada value.
+    # This also handles wide times (≥10 min) whose leading digit sits at X<410.
+    right_text = _chars_to_text([c for c in chars if c['x0'] > INS_COL['club_end']])
+    all_times = TIME_RE.findall(right_text)
+    weighted_time = time_to_seconds(all_times[-1]) if all_times else None
 
     # Only keep rows that look like real entries (have a time or at least year)
     if not year and weighted_time is None:

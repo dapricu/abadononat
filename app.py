@@ -363,6 +363,93 @@ def upload_results(comp_id: int):
     return redirect(url_for('competition', comp_id=comp_id))
 
 
+@app.route('/competition/<int:comp_id>/entries')
+def entries_view(comp_id: int):
+    comp = get_competition(comp_id)
+    if comp is None:
+        flash('Competición no encontrada.', 'danger')
+        return redirect(url_for('index'))
+    db = get_db()
+    rows = db.execute(
+        '''SELECT e.id, e.seq, e.swimmer_name, e.year, e.club,
+                  e.pool_length, e.weighted_time,
+                  ev.number AS event_number, ev.gender, ev.distance, ev.stroke, ev.relay
+           FROM entries e
+           JOIN events ev ON e.event_id = ev.id
+           WHERE ev.competition_id = ?
+           ORDER BY ev.number, e.seq''',
+        (comp_id,)
+    ).fetchall()
+    return render_template('entries.html', comp=comp, entries=[dict(r) for r in rows])
+
+
+@app.route('/competition/<int:comp_id>/entries/<int:entry_id>', methods=['POST'])
+def update_entry(comp_id: int, entry_id: int):
+    db = get_db()
+    swimmer_name = request.form.get('swimmer_name', '').strip()
+    year         = request.form.get('year', '').strip()
+    club         = request.form.get('club', '').strip().rstrip('- ').strip()
+    pool_length  = request.form.get('pool_length', '').strip()
+    time_str     = request.form.get('weighted_time', '').strip()
+
+    from pdf_parser import time_to_seconds, normalize_name
+    weighted_time = time_to_seconds(time_str) if time_str else None
+
+    db.execute(
+        '''UPDATE entries SET swimmer_name=?, swimmer_name_normalized=?,
+           year=?, club=?, pool_length=?, weighted_time=? WHERE id=?''',
+        (swimmer_name, normalize_name(swimmer_name),
+         year, club, pool_length, weighted_time, entry_id)
+    )
+    db.commit()
+    return jsonify({'ok': True})
+
+
+@app.route('/competition/<int:comp_id>/entries/<int:entry_id>/delete', methods=['POST'])
+def delete_entry(comp_id: int, entry_id: int):
+    db = get_db()
+    db.execute('DELETE FROM entries WHERE id=?', (entry_id,))
+    db.commit()
+    return jsonify({'ok': True})
+
+
+@app.route('/competition/<int:comp_id>/entries/add', methods=['POST'])
+def add_entry(comp_id: int):
+    """Manually add a single inscription entry."""
+    db = get_db()
+    event_number = request.form.get('event_number', type=int)
+    if not event_number:
+        return jsonify({'error': 'Número de prueba requerido'}), 400
+
+    ev_row = db.execute(
+        'SELECT * FROM events WHERE competition_id=? AND number=?',
+        (comp_id, event_number)
+    ).fetchone()
+    if ev_row is None:
+        return jsonify({'error': f'Prueba {event_number} no encontrada en esta competición'}), 404
+
+    from pdf_parser import time_to_seconds, normalize_name
+    swimmer_name = request.form.get('swimmer_name', '').strip()
+    year         = request.form.get('year', '').strip()
+    club         = request.form.get('club', '').strip().rstrip('- ').strip()
+    pool_length  = request.form.get('pool_length', '').strip()
+    time_str     = request.form.get('weighted_time', '').strip()
+    weighted_time = time_to_seconds(time_str) if time_str else None
+
+    if not swimmer_name:
+        return jsonify({'error': 'Nombre requerido'}), 400
+
+    cur = db.execute(
+        '''INSERT INTO entries
+           (event_id, seq, swimmer_name, swimmer_name_normalized, year, club, pool_length, weighted_time)
+           VALUES (?,?,?,?,?,?,?,?)''',
+        (ev_row['id'], 0, swimmer_name, normalize_name(swimmer_name),
+         year, club, pool_length, weighted_time)
+    )
+    db.commit()
+    return jsonify({'ok': True, 'id': cur.lastrowid})
+
+
 @app.route('/competition/<int:comp_id>/analysis')
 def analysis(comp_id: int):
     comp = get_competition(comp_id)
