@@ -14,7 +14,7 @@ from flask import (
 from werkzeug.utils import secure_filename
 
 from parser import parse_inscriptions, parse_results
-from analyzer import analyze, compute_copa_classification, seconds_to_time
+from analyzer import analyze, compute_copa_classification, venue_ranking_analysis, seconds_to_time
 
 # ---------------------------------------------------------------------------
 # App setup
@@ -60,6 +60,7 @@ def init_db():
             name       TEXT NOT NULL,
             date       TEXT,
             pool_type  TEXT DEFAULT '',
+            venue      TEXT DEFAULT '',
             created_at TEXT NOT NULL
         );
 
@@ -111,7 +112,17 @@ def init_db():
         );
     """)
     db.commit()
+    # Migrations: add columns that may not exist in older databases
+    _migrate(db)
+    db.commit()
     db.close()
+
+
+def _migrate(db: sqlite3.Connection):
+    """Add new columns to existing databases without losing data."""
+    existing = {row[1] for row in db.execute('PRAGMA table_info(competitions)').fetchall()}
+    if 'venue' not in existing:
+        db.execute("ALTER TABLE competitions ADD COLUMN venue TEXT DEFAULT ''")
 
 
 def allowed_file(filename: str) -> bool:
@@ -206,13 +217,14 @@ def new_competition():
         name = request.form.get('name', '').strip()
         date = request.form.get('date', '').strip()
         pool_type = request.form.get('pool_type', '').strip()
+        venue = request.form.get('venue', '').strip()
         if not name:
             flash('El nombre de la competición es obligatorio.', 'danger')
             return redirect(url_for('new_competition'))
         db = get_db()
         cur = db.execute(
-            'INSERT INTO competitions (name, date, pool_type, created_at) VALUES (?,?,?,?)',
-            (name, date, pool_type, datetime.utcnow().isoformat())
+            'INSERT INTO competitions (name, date, pool_type, venue, created_at) VALUES (?,?,?,?,?)',
+            (name, date, pool_type, venue, datetime.utcnow().isoformat())
         )
         db.commit()
         flash('Competición creada.', 'success')
@@ -246,10 +258,11 @@ def edit_competition(comp_id: int):
     pool_type = request.form.get('pool_type', '').strip()
     name = request.form.get('name', comp['name']).strip()
     date = request.form.get('date', comp['date']).strip()
+    venue = request.form.get('venue', comp['venue'] if comp['venue'] else '').strip()
     db = get_db()
     db.execute(
-        'UPDATE competitions SET name=?, date=?, pool_type=? WHERE id=?',
-        (name, date, pool_type, comp_id)
+        'UPDATE competitions SET name=?, date=?, pool_type=?, venue=? WHERE id=?',
+        (name, date, pool_type, venue, comp_id)
     )
     db.commit()
     flash('Competición actualizada.', 'success')
@@ -376,6 +389,40 @@ def analysis_json(comp_id: int):
     # Remove non-serializable helper
     data.pop('seconds_to_time', None)
     return jsonify(data)
+
+
+# ---------------------------------------------------------------------------
+# Global pool / venue ranking
+# ---------------------------------------------------------------------------
+
+@app.route('/pool-ranking')
+def pool_ranking():
+    db = get_db()
+    comps = db.execute('SELECT * FROM competitions ORDER BY name').fetchall()
+
+    all_records: list[dict] = []
+    comps_with_data = []
+    for comp in comps:
+        entries = _load_entries(db, comp['id'])
+        results = _load_results(db, comp['id'])
+        if not entries or not results:
+            continue
+        comp_data = analyze(entries, results, comp['pool_type'] or '')
+        venue = (comp['venue'] or '').strip() or comp['name']
+        for rec in comp_data['records']:
+            rec['venue'] = venue
+            rec['competition_name'] = comp['name']
+            rec['competition_id'] = comp['id']
+        all_records.extend(comp_data['records'])
+        comps_with_data.append({'id': comp['id'], 'name': comp['name'],
+                                 'venue': venue, 'n': len(comp_data['records'])})
+
+    ranking = venue_ranking_analysis(all_records)
+    return render_template('pool_ranking.html',
+                           ranking=ranking,
+                           all_records=all_records,
+                           comps_with_data=comps_with_data,
+                           seconds_to_time=seconds_to_time)
 
 
 # ---------------------------------------------------------------------------

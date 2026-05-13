@@ -185,6 +185,170 @@ def _rec_to_dict(r: ImprovementRecord) -> dict:
     }
 
 
+# ---------------------------------------------------------------------------
+# Venue / pool anomaly detection
+# ---------------------------------------------------------------------------
+
+def venue_ranking_analysis(all_records: list[dict]) -> list[dict]:
+    """
+    Compare competition venues by their event-adjusted improvement residuals
+    to detect installations whose pools may be shorter than declared.
+
+    Logic:
+      1. For each event (gender, distance, stroke) compute the mean and std
+         of improvements ACROSS ALL venues combined.
+      2. Each swimmer's residual = (improvement - event_mean) / event_std.
+         This makes swimmers in the 100m Libre comparable to those in the
+         400m Estilos regardless of how hard each event typically is.
+      3. Aggregate residuals per venue and compute a t-statistic testing
+         whether the venue mean is significantly different from 0.
+
+    Interpretation — competition venue:
+      • HIGH positive residual / t-stat → swimmers who competed at this
+        venue improved significantly MORE than peers in the same events at
+        other venues. A consistently short pool would inflate everyone's
+        result times, producing suspiciously large improvements against
+        entry marks from properly measured pools.
+      • Negative residual → below-average improvement at this venue
+        (tougher conditions, slow pool, etc.).
+
+    Records must include a 'venue' key (the installation/facility name)
+    and the standard improvement fields from analyzer.analyze().
+    """
+    if len(all_records) < 2:
+        return []
+
+    # Only work with records that have a venue assigned
+    records = [r for r in all_records if r.get('venue')]
+    if len(records) < 2:
+        return []
+
+    # --- Event-level stats across all venues combined ---------------------
+    event_groups: dict[tuple, list[float]] = {}
+    for r in records:
+        key = (r['gender'], r['distance'], r['stroke'])
+        event_groups.setdefault(key, []).append(r['improvement_sec'])
+
+    event_stats: dict[tuple, tuple[float, float]] = {}
+    for key, vals in event_groups.items():
+        ev_mean = statistics.mean(vals)
+        ev_std = statistics.stdev(vals) if len(vals) > 1 else 0.0
+        event_stats[key] = (ev_mean, ev_std)
+
+    # --- Per-swimmer event-adjusted residual and relative index -----------
+    venue_items: dict[str, list[dict]] = {}
+    for r in records:
+        key = (r['gender'], r['distance'], r['stroke'])
+        ev_mean, ev_std = event_stats[key]
+        residual = (r['improvement_sec'] - ev_mean) / ev_std if ev_std > 0 else 0.0
+        rel_idx = r['result_time'] / r['entry_time'] if r.get('entry_time') else 1.0
+        venue_items.setdefault(r['venue'], []).append({
+            'residual': residual,
+            'improvement_sec': r['improvement_sec'],
+            'improvement_pct': r['improvement_pct'],
+            'rel_idx': rel_idx,
+            'swimmer_name': r['swimmer_name'],
+            'club': r['club'],
+            'event': f"{r['gender']} {r['distance']}m {r['stroke']}",
+            'entry_time': r['entry_time'],
+            'result_time': r['result_time'],
+            'competition_name': r.get('competition_name', ''),
+        })
+
+    overall_vals = [r['improvement_sec'] for r in records]
+    overall_mean = statistics.mean(overall_vals)
+    overall_std = statistics.stdev(overall_vals) if len(overall_vals) > 1 else 1.0
+
+    # --- Aggregate per venue ---------------------------------------------
+    rows = []
+    for venue, items in venue_items.items():
+        n = len(items)
+        residuals = [x['residual'] for x in items]
+        improvements = [x['improvement_sec'] for x in items]
+        pcts = [x['improvement_pct'] for x in items]
+        rel_idxs = [x['rel_idx'] for x in items]
+
+        mean_res = statistics.mean(residuals)
+        mean_imp = statistics.mean(improvements)
+        std_res = statistics.stdev(residuals) if n > 1 else 0.0
+        std_imp = statistics.stdev(improvements) if n > 1 else 0.0
+
+        # t-statistic: mean_residual / SE  (SE = std_res / sqrt(n))
+        t_stat = mean_res / (std_res / (n ** 0.5)) if std_res > 0 and n > 1 else 0.0
+
+        cohen_d = (mean_imp - overall_mean) / overall_std if overall_std > 0 else 0.0
+
+        n_improved = sum(1 for v in improvements if v > 0)
+
+        # Competitions included at this venue
+        comps = sorted({x['competition_name'] for x in items if x['competition_name']})
+
+        # Top improvers (highest residual = most suspiciously fast vs peers)
+        top_3 = sorted(items, key=lambda x: -x['residual'])[:3]
+
+        rows.append({
+            'venue': venue,
+            'competitions': comps,
+            'n': n,
+            'mean_improvement_sec': round(mean_imp, 3),
+            'mean_improvement_pct': round(statistics.mean(pcts), 2),
+            'std_improvement_sec': round(std_imp, 3),
+            'median_improvement_sec': round(statistics.median(improvements), 3),
+            'mean_rel_idx': round(statistics.mean(rel_idxs), 4),
+            'pct_improved': round(100 * n_improved / n, 1),
+            'n_improved': n_improved,
+            'mean_residual': round(mean_res, 3),
+            'std_residual': round(std_res, 3),
+            't_stat': round(t_stat, 2),
+            'cohen_d': round(cohen_d, 3),
+            'gap_vs_mean_sec': round(mean_imp - overall_mean, 3),
+            # High positive t is suspicious (everyone improves unusually much = possible short pool)
+            'suspicion': _venue_suspicion(t_stat, n),
+            'top_improvers': [
+                {
+                    'swimmer_name': x['swimmer_name'],
+                    'club': x['club'],
+                    'event': x['event'],
+                    'improvement_sec': round(x['improvement_sec'], 3),
+                    'improvement_pct': round(x['improvement_pct'], 2),
+                    'residual': round(x['residual'], 2),
+                    'entry_time': x['entry_time'],
+                    'result_time': x['result_time'],
+                }
+                for x in top_3
+            ],
+        })
+
+    # Sort: highest mean_residual first (most suspicious = everyone improves a lot)
+    rows.sort(key=lambda x: (-x['mean_residual'], x['venue']))
+    for i, row in enumerate(rows):
+        row['rank'] = i + 1
+
+    return rows
+
+
+def _venue_suspicion(t_stat: float, n: int) -> str:
+    """
+    Flag venues whose swimmers improve significantly MORE than at other venues.
+
+    A high positive t-stat means all swimmers at this venue improved
+    more than peers in the same events at other venues — consistent
+    with a competition pool that is shorter than declared.
+    Low negative t-stat means below-average improvement (slow/long pool).
+    """
+    if n < 5:
+        return 'insuf'
+    if t_stat >= 2.5:
+        return 'alta'      # highly suspicious: anomalously high improvement
+    if t_stat >= 1.5:
+        return 'media'     # moderate suspicion
+    if t_stat <= -2.5:
+        return 'baja'      # below-average improvement (slow pool)
+    if t_stat <= -1.5:
+        return 'baja_mod'
+    return 'normal'
+
+
 # Points awarded to positions 1–16 in Copa de Clubs (FNCV scoring)
 COPA_POINTS = [19, 16, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
 

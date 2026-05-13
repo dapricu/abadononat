@@ -79,24 +79,16 @@
   <!-- By stroke -->
   <div class="tab-pane fade show active" id="tab-stroke">
     <div class="row g-3 mb-3">
-      <div class="col-md-6">
-        <canvas id="chartStroke" height="220"></canvas>
-      </div>
-      <div class="col-md-6">
-        {{ _stats_table(data.by_stroke) }}
-      </div>
+      <div class="col-md-6"><canvas id="chartStroke" height="220"></canvas></div>
+      <div class="col-md-6">{{ _stats_table(data.by_stroke) }}</div>
     </div>
   </div>
 
   <!-- By distance -->
   <div class="tab-pane fade" id="tab-distance">
     <div class="row g-3 mb-3">
-      <div class="col-md-6">
-        <canvas id="chartDistance" height="220"></canvas>
-      </div>
-      <div class="col-md-6">
-        {{ _stats_table(data.by_distance) }}
-      </div>
+      <div class="col-md-6"><canvas id="chartDistance" height="220"></canvas></div>
+      <div class="col-md-6">{{ _stats_table(data.by_distance) }}</div>
     </div>
   </div>
 
@@ -112,7 +104,7 @@
 
   <!-- Detail table -->
   <div class="tab-pane fade" id="tab-records">
-    <div class="mb-2 d-flex gap-2 align-items-center">
+    <div class="mb-2">
       <input type="text" id="filterRecords" class="form-control form-control-sm w-auto"
              placeholder="Filtrar por nombre o club…">
     </div>
@@ -120,17 +112,10 @@
       <table class="table table-sm table-hover table-striped" id="recordsTable">
         <thead class="table-dark">
           <tr>
-            <th>Ev.</th>
-            <th>G</th>
-            <th>Dist.</th>
-            <th>Estilo</th>
-            <th>Nadador</th>
-            <th>Club</th>
-            <th>Año</th>
-            <th>M.Inscr.</th>
-            <th>Resultado</th>
-            <th>Mejora (s)</th>
-            <th>Mejora (%)</th>
+            <th>Ev.</th><th>G</th><th>Dist.</th><th>Estilo</th>
+            <th>Nadador</th><th>Club</th><th>Año</th>
+            <th>M.Inscr.</th><th>Resultado</th>
+            <th>Mejora (s)</th><th>Mejora (%)</th>
           </tr>
         </thead>
         <tbody>
@@ -143,8 +128,8 @@
             <td>{{ r.swimmer_name }}</td>
             <td>{{ r.club }}</td>
             <td>{{ r.year }}</td>
-            <td>{{ r.entry_time | fmt_time }}</td>
-            <td>{{ r.result_time | fmt_time }}</td>
+            <td class="font-monospace">{{ r.entry_time | fmt_time }}</td>
+            <td class="font-monospace">{{ r.result_time | fmt_time }}</td>
             <td class="fw-semibold {% if r.improvement_sec > 0 %}text-success{% else %}text-danger{% endif %}">
               {{ r.improvement_sec | fmt_sign }}
             </td>
@@ -160,17 +145,15 @@
 
 </div>
 
+{# ---- Jinja macros ---- #}
+
 {% macro _stats_table(by_group) %}
 <div class="table-responsive">
   <table class="table table-sm table-bordered align-middle">
     <thead class="table-secondary">
       <tr>
-        <th>Grupo</th>
-        <th>N</th>
-        <th>% mejora</th>
-        <th>Media (s)</th>
-        <th>Mediana (s)</th>
-        <th>σ (s)</th>
+        <th>Grupo</th><th>N</th><th>% mejora</th>
+        <th>Media (s)</th><th>Mediana (s)</th><th>σ (s)</th>
       </tr>
     </thead>
     <tbody>
@@ -203,38 +186,31 @@
 
 {% block scripts %}
 <script>
-const byStroke = {{ data.by_stroke | tojson }};
+const byStroke   = {{ data.by_stroke   | tojson }};
 const byDistance = {{ data.by_distance | tojson }};
 
-function makeBarChart(canvasId, groupData, label) {
+// ---- Stroke / distance charts ----
+function makeBarChart(canvasId, groupData) {
   const labels = Object.keys(groupData);
-  const means = labels.map(k => groupData[k].mean_improvement_sec);
+  const means  = labels.map(k => groupData[k].mean_improvement_sec);
   const colors = means.map(v => v >= 0 ? 'rgba(25,135,84,0.75)' : 'rgba(220,53,69,0.75)');
   new Chart(document.getElementById(canvasId), {
     type: 'bar',
     data: {
       labels,
-      datasets: [{
-        label: 'Mejora media (s)',
-        data: means,
-        backgroundColor: colors,
-        borderColor: colors.map(c => c.replace('0.75', '1')),
-        borderWidth: 1,
-      }]
+      datasets: [{ label: 'Mejora media (s)', data: means,
+        backgroundColor: colors, borderColor: colors.map(c => c.replace('0.75','1')), borderWidth: 1 }]
     },
     options: {
       plugins: { legend: { display: false } },
-      scales: {
-        y: { title: { display: true, text: 'segundos (+ = mejora)' } }
-      }
+      scales: { y: { title: { display: true, text: 'segundos (+ = mejora)' } } }
     }
   });
 }
+makeBarChart('chartStroke',   byStroke);
+makeBarChart('chartDistance', byDistance);
 
-makeBarChart('chartStroke', byStroke, 'Estilo');
-makeBarChart('chartDistance', byDistance, 'Distancia');
-
-// Filter detail table
+// ---- Filter records table ----
 document.getElementById('filterRecords').addEventListener('input', function() {
   const q = this.value.toLowerCase();
   document.querySelectorAll('#recordsTable tbody tr').forEach(tr => {

@@ -14,6 +14,7 @@
     <h1 class="h3 mb-1">{{ comp.name }}</h1>
     <div class="text-muted small">
       {% if comp.date %}<i class="bi bi-calendar3"></i> {{ comp.date }} &nbsp;{% endif %}
+      {% if comp.venue %}<i class="bi bi-geo-alt"></i> {{ comp.venue }} &nbsp;{% endif %}
       {% if comp.pool_type %}
         <span class="badge bg-info text-dark"><i class="bi bi-rulers"></i> Piscina {{ comp.pool_type }}</span>
       {% else %}
@@ -129,6 +130,13 @@
           <div class="mb-3">
             <label class="form-label fw-semibold">Fecha</label>
             <input type="date" name="date" class="form-control" value="{{ comp.date or '' }}">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Instalación / Piscina</label>
+            <input type="text" name="venue" class="form-control"
+                   value="{{ comp.venue or '' }}"
+                   placeholder="Piscina Municipal Castellón…">
+            <div class="form-text">Nombre de la instalación donde se celebra la competición.</div>
           </div>
           <div class="mb-3">
             <label class="form-label fw-semibold">Tipo de piscina</label>
