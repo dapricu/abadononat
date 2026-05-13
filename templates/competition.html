@@ -103,7 +103,12 @@
           </div>
         </form>
         {% if n_results > 0 %}
-          <div class="mt-2 text-success small"><i class="bi bi-check-circle"></i> Archivo cargado</div>
+          <div class="mt-2 d-flex align-items-center gap-2">
+            <span class="text-success small"><i class="bi bi-check-circle"></i> Archivo cargado</span>
+            <a href="{{ url_for('results_view', comp_id=comp.id) }}" class="btn btn-outline-secondary btn-sm">
+              <i class="bi bi-pencil-square"></i> Revisar y corregir
+            </a>
+          </div>
         {% endif %}
       </div>
     </div>
