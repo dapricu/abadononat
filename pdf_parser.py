@@ -407,11 +407,28 @@ def _parse_result_row(chars: list, event: dict) -> dict | None:
     # the PDF renderer places birth-year digit(s) at the same X positions as the
     # last name chars; pdfplumber then interleaves them, e.g.:
     #   "DE ANDRES NUÑEZ ROMERO0, M4"  →  name "… ROMERO, M"  year "04"
-    # Strategy: split on the comma, strip trailing digit(s) from the surname half
-    # and leading digit(s) from the given-name half, then combine them as the year.
+    # Additionally, for extremely long names the X=233 boundary can fall inside
+    # the surname, leaving the comma in right_text:
+    #   left  = "…CAMPOS BEAS-PEREZ DE TUDEL"
+    #   right = "A, M03iguelClub Deportivo…"
+    # In that case we absorb the surname tail + comma from right_text before
+    # running the comma-based extraction.
     left_tail   = ''
     year_digits = ''
     comma_pos   = after_pos.find(',')
+
+    # --- Absorb surname tail from right_text when comma is not in left_text ---
+    if comma_pos < 0 and right_text:
+        rt = right_text.lstrip()
+        # Match up to 8 surname chars followed by a comma (the tail of a long surname)
+        rt_tail_m = re.match(r'^([A-Za-záéíóúÁÉÍÓÚüÜñÑ]{0,8}),\s*', rt)
+        if rt_tail_m:
+            surname_tail = rt_tail_m.group(1)
+            rest_for_name = rt[rt_tail_m.end():]
+            # Reconstruct after_pos with the full surname and the rest of the row
+            after_pos  = after_pos.rstrip() + surname_tail + ',' + rest_for_name
+            right_text = ''   # everything relevant is now in after_pos
+            comma_pos  = after_pos.find(',')
 
     if comma_pos > 0:
         surname_raw = after_pos[:comma_pos]
@@ -436,7 +453,15 @@ def _parse_result_row(chars: list, event: dict) -> dict | None:
             g_trail = re.match(r'(\d{1,2})(?![\d\.])', after_given)
             if g_trail:
                 year_digits += g_trail.group(1)
-                left_tail    = after_given[g_trail.end():]
+                remaining    = after_given[g_trail.end():]
+                # Consume any lowercase continuation of the given name that follows
+                # the interleaved year digits (e.g. "iguel" after "M03" → "Miguel").
+                lower_cont = re.match(r'^([a-záéíóúüñ]+)', remaining)
+                if lower_cont:
+                    given_name += lower_cont.group(1)
+                    left_tail   = remaining[lower_cont.end():]
+                else:
+                    left_tail = remaining
             elif len(year_digits) < 2:
                 # Fallback: two digits separated by one non-letter char
                 # (PDF sometimes renders "10" as "1.0" or "1 0")
