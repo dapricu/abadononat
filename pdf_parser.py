@@ -403,29 +403,39 @@ def _parse_result_row(chars: list, event: dict) -> dict | None:
 
     after_pos = left_text[pos_match.end():].strip() if pos_match else left_text
 
-    # Year: LAST isolated 2-digit number in after_pos.
-    # Text before it = swimmer name; text after it = club prefix (may contain
-    # split-time fragments that are stripped before use).
-    yr_candidates = list(re.finditer(r'(?<!\d)(\d{2})(?!\d)', after_pos))
-    if yr_candidates:
-        last_yr   = yr_candidates[-1]
-        year      = last_yr.group(1)
-        raw_name  = after_pos[:last_yr.start()].strip().rstrip(',').strip()
-        left_tail = after_pos[last_yr.end():]
+    # Name: longest alphabetical prefix — stops at the first digit.
+    # This handles cases where year chars immediately follow a name initial
+    # with no space (e.g. "GONZALVEZ, J11C.N.T" → name="GONZALVEZ, J", rest="11C.N.T").
+    name_m = re.match(r'^([A-Za-záéíóúÁÉÍÓÚüÜñÑ\s,\.\-]+)', after_pos)
+    if name_m:
+        swimmer_name = name_m.group(1).rstrip(' .,').strip()
+        numeric_rest = after_pos[name_m.end():]
     else:
-        year      = ''
-        raw_name  = re.sub(r'[\d\.\s,]+$', '', after_pos).strip().rstrip(',').strip()
-        left_tail = ''
+        swimmer_name = re.sub(r'[\d\.\s,]+$', '', after_pos).strip().rstrip(',').strip()
+        numeric_rest = ''
 
-    swimmer_name = raw_name.strip()
     if not swimmer_name:
         return None
 
-    # Club prefix: strip digit/time noise from the left tail, keep alpha text
-    club_prefix = re.sub(r'^[\d\.\s:,]+', '', left_tail).strip()
+    # Year: FIRST pair of consecutive digits in the numeric remainder.
+    # Using the first match avoids mistaking split-time digits (e.g. "5:01.12"
+    # immediately after the year) for the birth year.
+    yr_m = re.search(r'\d{2}', numeric_rest) if numeric_rest else None
+    year      = yr_m.group(0) if yr_m else ''
+    left_tail = numeric_rest[yr_m.end():] if yr_m else numeric_rest
+
+    # Club prefix: strip digit/time noise from the left tail.
+    # Reject if ':' is still present (means the tail is a split-time label).
+    stripped_tail = re.sub(r'^[\d\.\s:,]+', '', left_tail).strip()
+    club_prefix   = stripped_tail if stripped_tail and ':' not in stripped_tail else ''
+
+    # Strip any leading digits from right_text (handles a year digit that lands
+    # at X >= YEAR_COL_END due to PDF rendering variation).
+    right_stripped = re.sub(r'^[\d\s]+', '', right_text).strip()
+    right_clean    = right_stripped if right_stripped and right_stripped[0].isalpha() else right_text
 
     # Full club text = prefix + right column; regex stops at first digit
-    full_right = (club_prefix + right_text).strip()
+    full_right = (club_prefix + right_clean).strip()
     club_m     = re.match(r'^([A-Za-z\xe0-\xffÀ-ɏ\s\.\-]+)', full_right)
     club       = club_m.group(1).strip().rstrip('- ').strip() if club_m else ''
     club       = re.sub(r'\s+[A-Z]{2}$', '', club).strip().rstrip('- ').strip()
