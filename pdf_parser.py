@@ -429,8 +429,21 @@ def _parse_result_row(chars: list, event: dict) -> dict | None:
     stripped_tail = re.sub(r'^[\d\.\s:,]+', '', left_tail).strip()
     club_prefix   = stripped_tail if stripped_tail and ':' not in stripped_tail else ''
 
-    # Strip any leading digits from right_text (handles a year digit that lands
-    # at X >= YEAR_COL_END due to PDF rendering variation).
+    # If the year was not found in the left column, the birth-year chars may
+    # have landed at X >= YEAR_COL_END (PDF rendering variation).  Extract them
+    # from the start of right_text so they are not silently swallowed by the
+    # club-stripping step below.  Guard with a negative lookahead for '.' or
+    # another digit so we don't consume points/times (e.g. "25.28" or "903.4").
+    if not year and right_text:
+        rt = right_text.lstrip()
+        yr_rt_m = re.match(r'^(\d{2,4})(?![\d\.])', rt)
+        if yr_rt_m:
+            raw_yr   = yr_rt_m.group(1)
+            year     = raw_yr[-2:]          # keep last 2 digits (handles 4-digit years)
+            right_text = rt[yr_rt_m.end():].lstrip()
+
+    # Strip any remaining leading digits from right_text (handles partial year
+    # digits that straddle the X = YEAR_COL_END boundary).
     right_stripped = re.sub(r'^[\d\s]+', '', right_text).strip()
     right_clean    = right_stripped if right_stripped and right_stripped[0].isalpha() else right_text
 
