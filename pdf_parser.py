@@ -420,9 +420,21 @@ def _parse_result_row(chars: list, event: dict) -> dict | None:
     # Year: FIRST pair of consecutive digits in the numeric remainder.
     # Using the first match avoids mistaking split-time digits (e.g. "5:01.12"
     # immediately after the year) for the birth year.
+    # Fallback: two digits separated by a single non-letter char — PDF renderers
+    # occasionally insert a space or period between adjacent year digits (e.g.
+    # "1.0" for year "10").
     yr_m = re.search(r'\d{2}', numeric_rest) if numeric_rest else None
-    year      = yr_m.group(0) if yr_m else ''
-    left_tail = numeric_rest[yr_m.end():] if yr_m else numeric_rest
+    if yr_m:
+        year      = yr_m.group(0)
+        left_tail = numeric_rest[yr_m.end():]
+    else:
+        yr_m2 = re.search(r'(\d)[^A-Za-z\d](\d)', numeric_rest) if numeric_rest else None
+        if yr_m2:
+            year      = yr_m2.group(1) + yr_m2.group(2)
+            left_tail = numeric_rest[yr_m2.end():]
+        else:
+            year      = ''
+            left_tail = numeric_rest
 
     # Club prefix: strip digit/time noise from the left tail.
     # Reject if ':' is still present (means the tail is a split-time label).
@@ -438,9 +450,15 @@ def _parse_result_row(chars: list, event: dict) -> dict | None:
         rt = right_text.lstrip()
         yr_rt_m = re.match(r'^(\d{2,4})(?![\d\.])', rt)
         if yr_rt_m:
-            raw_yr   = yr_rt_m.group(1)
-            year     = raw_yr[-2:]          # keep last 2 digits (handles 4-digit years)
+            raw_yr     = yr_rt_m.group(1)
+            year       = raw_yr[-2:]        # keep last 2 digits (handles 4-digit years)
             right_text = rt[yr_rt_m.end():].lstrip()
+        else:
+            # Fallback: two digits with a single non-letter separator at start of right_text
+            yr_rt_m2 = re.match(r'^(\d)[^A-Za-z\d](\d)(?![\d\.])', rt)
+            if yr_rt_m2:
+                year       = yr_rt_m2.group(1) + yr_rt_m2.group(2)
+                right_text = rt[yr_rt_m2.end():].lstrip()
 
     # Strip any remaining leading digits from right_text (handles partial year
     # digits that straddle the X = YEAR_COL_END boundary).

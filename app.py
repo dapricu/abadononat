@@ -550,7 +550,9 @@ def results_view(comp_id: int):
             key = (er['event_number'], name_match_key(er['swimmer_name_normalized'] or ''))
             if er['pool_length'] and er['pool_length'] != pool_type:
                 mismatch_keys.add(key)
-            elif er['pool_length'] == pool_type and er['weighted_time'] is not None:
+            else:
+                # Counts as a valid inscription whether or not pool_length or
+                # weighted_time is filled in — presence in the file is enough.
                 valid_entry_keys.add(key)
 
     for r in results:
