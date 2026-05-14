@@ -15,7 +15,7 @@ from flask import (
 )
 from werkzeug.utils import secure_filename
 
-from pdf_parser import parse_inscriptions, parse_results
+from pdf_parser import parse_inscriptions, parse_results, name_match_key
 from analyzer import analyze, compute_copa_classification, venue_ranking_analysis, seconds_to_time
 
 # ---------------------------------------------------------------------------
@@ -547,14 +547,14 @@ def results_view(comp_id: int):
             (comp_id,)
         ).fetchall()
         for er in entry_rows:
-            key = (er['event_number'], er['swimmer_name_normalized'])
+            key = (er['event_number'], name_match_key(er['swimmer_name_normalized'] or ''))
             if er['pool_length'] and er['pool_length'] != pool_type:
                 mismatch_keys.add(key)
             elif er['pool_length'] == pool_type and er['weighted_time'] is not None:
                 valid_entry_keys.add(key)
 
     for r in results:
-        key = (r['event_number'], r.get('swimmer_name_normalized', ''))
+        key = (r['event_number'], name_match_key(r.get('swimmer_name_normalized', '')))
         r['pool_mismatch'] = key in mismatch_keys
         r['no_entry'] = (
             bool(pool_type)

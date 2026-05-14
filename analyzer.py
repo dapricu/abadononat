@@ -7,6 +7,8 @@ Only entries whose pool_length matches the competition pool_type are included.
 import statistics
 from dataclasses import dataclass, field
 
+from pdf_parser import name_match_key
+
 
 def _full_birth_year(year_str: str, reference_year: int) -> int | None:
     """Convert a 2-digit birth year string to a 4-digit year."""
@@ -115,7 +117,7 @@ def analyze(
         if competition_pool_type and e.get('pool_length') and e['pool_length'] != competition_pool_type:
             excluded_pool.append(e)
             continue
-        key = (e['event_number'], e['swimmer_name_normalized'])
+        key = (e['event_number'], name_match_key(e['swimmer_name_normalized']))
         # Keep the entry with the best (lowest) time if duplicates
         if key not in entry_index or e['weighted_time'] < entry_index[key]['weighted_time']:
             entry_index[key] = e
@@ -127,7 +129,7 @@ def analyze(
     for r in results:
         if r.get('dsq') or r.get('result_time') is None:
             continue
-        key = (r['event_number'], r['swimmer_name_normalized'])
+        key = (r['event_number'], name_match_key(r.get('swimmer_name_normalized', '')))
         entry = entry_index.get(key)
         if entry is None:
             unmatched_results.append(r)
