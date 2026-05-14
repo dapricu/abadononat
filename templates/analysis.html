@@ -9,7 +9,7 @@
     <thead class="table-secondary">
       <tr>
         <th>Grupo</th><th>N</th><th>% mejora</th>
-        <th>Media (s)</th><th>Mediana (s)</th><th>σ (s)</th>
+        <th>Media (s)</th><th>Mediana (s)</th><th>&sigma; (s)</th><th>Edad media</th>
       </tr>
     </thead>
     <tbody>
@@ -31,6 +31,7 @@
           {{ s.median_improvement_sec | fmt_sign }}
         </td>
         <td>{{ s.std_improvement_sec | round(3) }}</td>
+        <td class="text-muted">{{ s.mean_age if s.mean_age is not none else '&mdash;' }}</td>
       </tr>
       {% endfor %}
     </tbody>
@@ -87,10 +88,20 @@
     <div class="card text-center h-100">
       <div class="card-body">
         <div class="display-6 fw-bold">{{ ov.std_improvement_sec | round(3) }}s</div>
-        <div class="text-muted small">Desviación típica</div>
+        <div class="text-muted small">Desviaci&oacute;n t&iacute;pica</div>
       </div>
     </div>
   </div>
+  {% if ov.mean_age is not none %}
+  <div class="col-6 col-md-3">
+    <div class="card text-center h-100 border-info">
+      <div class="card-body">
+        <div class="display-6 fw-bold text-info">{{ ov.mean_age }}</div>
+        <div class="text-muted small">Edad media</div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 </div>
 
 {% if data.excluded_pool %}
@@ -149,7 +160,7 @@
         <thead class="table-dark">
           <tr>
             <th>Ev.</th><th>G</th><th>Dist.</th><th>Estilo</th>
-            <th>Nadador</th><th>Club</th><th>Año</th>
+            <th>Nadador</th><th>Club</th><th>A&ntilde;o</th><th>Edad</th>
             <th>M.Inscr.</th><th>Resultado</th>
             <th>Mejora (s)</th><th>Mejora (%)</th>
           </tr>
@@ -164,6 +175,7 @@
             <td>{{ r.swimmer_name }}</td>
             <td>{{ r.club }}</td>
             <td>{{ r.year }}</td>
+            <td class="text-muted">{{ r.age if r.age is not none else '&mdash;' }}</td>
             <td class="font-monospace">{{ r.entry_time | fmt_time }}</td>
             <td class="font-monospace">{{ r.result_time | fmt_time }}</td>
             <td class="fw-semibold {% if r.improvement_sec > 0 %}text-success{% else %}text-danger{% endif %}">

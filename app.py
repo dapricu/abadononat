@@ -536,28 +536,40 @@ def results_view(comp_id: int):
     # Detect pool mismatch: entry marks from a different pool type than the competition
     pool_type = comp['pool_type'] or ''
     mismatch_keys: set[tuple] = set()
+    valid_entry_keys: set[tuple] = set()
     if pool_type:
-        en_cols = {r[1] for r in db.execute('PRAGMA table_info(entries)').fetchall()}
-        res_col = 'e.reserve' if 'reserve' in en_cols else '0 AS reserve'
         entry_rows = db.execute(
-            f'''SELECT e.pool_length, e.swimmer_name_normalized,
-                       ev.number AS event_number
-                FROM entries e
-                JOIN events ev ON e.event_id = ev.id
-                WHERE ev.competition_id = ? AND e.pool_length != '' AND e.pool_length != ?''',
-            (comp_id, pool_type)
+            '''SELECT e.pool_length, e.swimmer_name_normalized,
+                      ev.number AS event_number, e.weighted_time
+               FROM entries e
+               JOIN events ev ON e.event_id = ev.id
+               WHERE ev.competition_id = ?''',
+            (comp_id,)
         ).fetchall()
-        mismatch_keys = {(r['event_number'], r['swimmer_name_normalized']) for r in entry_rows}
+        for er in entry_rows:
+            key = (er['event_number'], er['swimmer_name_normalized'])
+            if er['pool_length'] and er['pool_length'] != pool_type:
+                mismatch_keys.add(key)
+            elif er['pool_length'] == pool_type and er['weighted_time'] is not None:
+                valid_entry_keys.add(key)
 
     for r in results:
         key = (r['event_number'], r.get('swimmer_name_normalized', ''))
         r['pool_mismatch'] = key in mismatch_keys
+        r['no_entry'] = (
+            bool(pool_type)
+            and not r['pool_mismatch']
+            and not r.get('dsq')
+            and r.get('result_time') is not None
+            and key not in valid_entry_keys
+        )
 
     stats = {
         'total':        len(results),
         'dsq':          sum(1 for r in results if r.get('dsq')),
         'no_time':      sum(1 for r in results if r.get('result_time') is None and not r.get('dsq')),
         'pool_mismatch': sum(1 for r in results if r.get('pool_mismatch')),
+        'no_entry':     sum(1 for r in results if r.get('no_entry')),
     }
     return render_template('results.html', comp=comp, results=results, stats=stats)
 
@@ -632,8 +644,9 @@ def analysis(comp_id: int):
         return redirect(url_for('competition', comp_id=comp_id))
 
     pool_type = comp['pool_type'] or ''
-    data = analyze(entries, results, pool_type)
-    data['seconds_to_time'] = seconds_to_time  # pass helper to template
+    comp_year = int(comp['date'][:4]) if comp['date'] and len(comp['date']) >= 4 else datetime.utcnow().year
+    data = analyze(entries, results, pool_type, competition_year=comp_year)
+    data['seconds_to_time'] = seconds_to_time
 
     return render_template('analysis.html', comp=comp, data=data, seconds_to_time=seconds_to_time)
 
@@ -857,7 +870,8 @@ def copa_clasificacion(copa_id: int):
             r['competition_name'] = row['name']
         all_results.extend(comp_results)
 
-    data = compute_copa_classification(all_results)
+    ref_year = datetime.utcnow().year
+    data = compute_copa_classification(all_results, reference_year=ref_year)
     return render_template('copa_clasificacion.html', copa=c, linked=linked, data=data,
                            seconds_to_time=seconds_to_time)
 
@@ -865,6 +879,20 @@ def copa_clasificacion(copa_id: int):
 # ---------------------------------------------------------------------------
 # Template filters
 # ---------------------------------------------------------------------------
+
+@app.template_filter('fmt_event_key')
+def fmt_event_key_filter(key: str) -> str:
+    """'M_800m_Libre_relay' → 'M 4x200m Libre (relevo)'"""
+    import re as _re
+    m = _re.match(r'^([MFX])_(\d+)m_(\w+?)(_relay)?$', key)
+    if not m:
+        return key.replace('_', ' ')
+    gender, dist, stroke, relay = m.groups()
+    dist = int(dist)
+    if relay:
+        return f'{gender} 4x{dist // 4}m {stroke} (relevo)'
+    return f'{gender} {dist}m {stroke}'
+
 
 @app.template_filter('fmt_time')
 def fmt_time_filter(secs):

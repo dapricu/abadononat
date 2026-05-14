@@ -30,13 +30,11 @@ POOL_RE = re.compile(r'(25|50)\s*m', re.IGNORECASE)
 # X threshold for the Tiempo (result time) column in FNCV results PDFs.
 RES_TIEMPO_X = 420
 
-# X-position column thresholds for results rows (Splash Meet Manager FNCV format).
-# Adjust if your PDFs use a different page width or margin.
-RES_COL = {
-    'name_end':  215,   # position + name: X < 215
-    'year_end':  240,   # year: 215 <= X < 240
-    'club_end':  390,   # club: 240 <= X < 390  (qualifier tokens AN/AC/MN also in this range)
-}
+# X boundary between the year column and the club/points/splits area in results PDFs.
+# Chars at X < YEAR_COL_END belong to: position number + swimmer name + birth year.
+# Chars at X >= YEAR_COL_END belong to: club name, qualifier tokens, points, split times.
+# Mirrors INS_COL['ano_end'] = 233 from the inscriptions parser (same PDF software).
+YEAR_COL_END = 233
 
 # Lines in results PDFs that carry only split times, not swimmer results.
 # E.g. "50m: 31.77  150m: 1:48.23 ..."  or  "100m: 1:09.08  200m: 2:26.20 ..."
@@ -334,70 +332,78 @@ def parse_results(pdf_path: str) -> tuple[list[dict], str]:
 
 def _parse_result_row(chars: list, event: dict) -> dict | None:
     """
-    Parse one result row using X-position column splitting for name/year/club
-    (same technique as inscriptions) and font-based detection for the result time.
+    Parse one result row using a hybrid approach:
+      - Left side  (X < YEAR_COL_END): position + name + birth year.
+        Split-time chars at high X are excluded from this region, so the
+        year regex is never confused by adjacent split digits.
+      - Right side (X >= YEAR_COL_END): club name, qualifier tokens, points.
+        Split times are also here but the club regex stops at the first digit.
 
-    Columns (approximate X thresholds defined in RES_COL):
-      X < name_end          → position number + swimmer name
-      name_end <= X < year_end → birth year (2-digit)
-      year_end <= X < club_end → club name (qualifier tokens like AN/AC may appear here too)
-      X >= RES_TIEMPO_X (bold) → result time
+    Year detection: find the LAST isolated 2-digit number in left-side text.
+    Fallback (no 2-digit number found): strip trailing non-alpha chars for name.
+
+    Time detection: existing three-tier bold / right-column approach.
+    Rows without a leading position number are rejected (split rows, headers).
     """
     bold_chars    = [c for c in chars if 'Bold' in c.get('fontname', '')]
     regular_chars = [c for c in chars if 'Bold' not in c.get('fontname', '')]
 
-    # ---- Result time (keep three-tier detection) ----
+    bold_text = _chars_to_text(bold_chars).strip()
+    reg_text  = _chars_to_text(regular_chars).strip()
+
+    # ---- Result time: three-tier detection ----
     right_bold = [c for c in bold_chars if c['x0'] >= RES_TIEMPO_X]
     tm = TIME_RE.search(_chars_to_text(right_bold))
     if not tm:
-        tm = TIME_RE.search(_chars_to_text(bold_chars))
+        tm = TIME_RE.search(bold_text)
     if not tm:
         right_all = [c for c in chars if c['x0'] >= RES_TIEMPO_X]
         tm = TIME_RE.search(_chars_to_text(right_all))
     result_time = time_to_seconds(tm.group(0)) if tm else None
 
     # ---- DSQ / DNS ----
-    full_text = _chars_to_text(chars).strip()
-    dsq = bool(re.search(r'\b(DSQ|DNS|DQ|NP|AB)\b', full_text, re.IGNORECASE))
+    dsq = bool(re.search(r'\b(DSQ|DNS|DQ|NP|AB)\b', reg_text + bold_text, re.IGNORECASE))
 
-    # ---- X-based column split ----
-    pos_name_chars = [c for c in regular_chars if c['x0'] < RES_COL['name_end']]
-    year_chars     = [c for c in regular_chars if RES_COL['name_end'] <= c['x0'] < RES_COL['year_end']]
-    club_chars     = [c for c in regular_chars if RES_COL['year_end'] <= c['x0'] < RES_COL['club_end']]
-
-    pos_name_text = _chars_to_text(pos_name_chars).strip()
-    if not pos_name_text:
+    if not reg_text:
         return None
 
-    # Position: leading digits followed by '.'
-    pos_match = re.match(r'^(\d+)\.', pos_name_text)
-    position  = int(pos_match.group(1)) if pos_match else None
+    # ---- X-based split: left side (name/year) vs right side (club/points) ----
+    left_chars  = [c for c in regular_chars if c['x0'] < YEAR_COL_END]
+    right_chars = [c for c in regular_chars if c['x0'] >= YEAR_COL_END]
+    left_text   = _chars_to_text(left_chars).strip()
+    right_text  = _chars_to_text(right_chars).strip()
 
-    # Without a position number this is not a valid result row (header/split/blank)
+    # Position: leading digits + '.' in left column
+    pos_match = re.match(r'^(\d+)\.', left_text)
+    position  = int(pos_match.group(1)) if pos_match else None
     if position is None and not dsq:
         return None
 
-    swimmer_name = (
-        pos_name_text[pos_match.end():].strip().rstrip(',').strip()
-        if pos_match else pos_name_text.strip()
-    )
+    after_pos = left_text[pos_match.end():].strip() if pos_match else left_text
+
+    # Year: LAST isolated 2-digit number in after_pos (immediately before club)
+    yr_candidates = list(re.finditer(r'(?<!\d)(\d{2})(?!\d)', after_pos))
+    if yr_candidates:
+        last_yr  = yr_candidates[-1]
+        year     = last_yr.group(1)
+        raw_name = after_pos[:last_yr.start()].strip().rstrip(',').strip()
+    else:
+        year     = ''
+        # Fallback: strip trailing numeric / punctuation noise to recover name
+        raw_name = re.sub(r'[\d\.\s,]+$', '', after_pos).strip().rstrip(',').strip()
+
+    swimmer_name = raw_name.strip()
     if not swimmer_name:
         return None
 
-    # Year: take the first 2–4 digit run found in the year column
-    year_text  = _chars_to_text(year_chars).strip()
-    year_match = re.search(r'\d{2,4}', year_text)
-    year = year_match.group(0)[-2:] if year_match else ''   # keep last 2 digits
+    # ---- Club: leading letter sequence from the right column ----
+    club_match = re.match(r'^([A-Za-záéíóúÁÉÍÓÚüÜñÑ\s\.\-]+)', right_text)
+    club = club_match.group(1).strip().rstrip('- ').strip() if club_match else ''
+    club = re.sub(r'\s+[A-Z]{2}$', '', club).strip().rstrip('- ').strip()
 
-    # Club: full text of the club column; strip trailing qualifier abbreviations
-    # (e.g. "AN", "AC", "MN" that appear as a separate token after the club name)
-    club_raw = _chars_to_text(club_chars).strip().rstrip('- ').strip()
-    club = re.sub(r'\s+[A-Z]{2}$', '', club_raw).strip().rstrip('- ').strip()
-
-    # Points: first decimal number in the area right of club_end but left of time
-    points_chars = [c for c in regular_chars
-                    if RES_COL['club_end'] <= c['x0'] < RES_TIEMPO_X]
-    points_match = re.search(r'(\d+[,\.]\d+)', _chars_to_text(points_chars))
+    # Points: first decimal number in right column after club
+    after_club   = right_text[len(club_match.group(0)):] if club_match else right_text
+    points_match = re.search(r'(\d+[,\.]\d+)', after_club)
     if points_match:
         try:
             points = float(points_match.group(1).replace(',', '.'))
@@ -411,14 +417,14 @@ def _parse_result_row(chars: list, event: dict) -> dict | None:
 
     return {
         **event,
-        'position': position,
-        'swimmer_name': swimmer_name,
+        'position':                position,
+        'swimmer_name':            swimmer_name,
         'swimmer_name_normalized': normalize_name(swimmer_name),
-        'year': year,
-        'club': club,
-        'result_time': result_time,
-        'points': points,
-        'dsq': dsq,
+        'year':                    year,
+        'club':                    club,
+        'result_time':             result_time,
+        'points':                  points,
+        'dsq':                     dsq,
     }
 
 

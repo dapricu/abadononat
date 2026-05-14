@@ -2,6 +2,25 @@
 {% block title %}Ranking de Piscinas{% endblock %}
 
 {% block content %}
+{# ---- Macros (must be defined before use) ---- #}
+{% macro _row_class(s) %}{% if s == 'alta' %}table-danger{% elif s == 'media' %}table-warning{% elif s == 'baja' %}table-info{% elif s == 'baja_mod' %}table-light{% endif %}{% endmacro %}
+
+{% macro _suspicion_badge(s) %}
+{% if s == 'alta' %}
+  <span class="badge bg-danger" title="Mejora an&oacute;malamente alta (t &ge; 2.5, p &asymp; 0.01). Posible piscina corta.">&nbsp;Alta</span>
+{% elif s == 'media' %}
+  <span class="badge bg-warning text-dark" title="Mejora algo superior a la media (t entre 1.5 y 2.5).">&nbsp;Media</span>
+{% elif s == 'baja' %}
+  <span class="badge bg-secondary" title="Mejoras significativamente por debajo de la media (t &le; &minus;2.5).">&nbsp;Baja</span>
+{% elif s == 'baja_mod' %}
+  <span class="badge bg-light text-dark border" title="Mejoras algo por debajo de la media.">&nbsp;Baja mod.</span>
+{% elif s == 'insuf' %}
+  <span class="badge bg-light text-muted border" title="Menos de 5 nadadores, datos insuficientes.">&nbsp;Insuf.</span>
+{% else %}
+  <span class="badge bg-success">&nbsp;Normal</span>
+{% endif %}
+{% endmacro %}
+
 <div class="d-flex justify-content-between align-items-center mb-4">
   <h1 class="h3 mb-0"><i class="bi bi-search"></i> Ranking de Piscinas</h1>
 </div>
@@ -225,26 +244,6 @@
 </div>
 
 {% endif %}
-
-{# ---- Macros ---- #}
-
-{% macro _row_class(s) %}{% if s == 'alta' %}table-danger{% elif s == 'media' %}table-warning{% elif s == 'baja' %}table-info{% elif s == 'baja_mod' %}table-light{% endif %}{% endmacro %}
-
-{% macro _suspicion_badge(s) %}
-{% if s == 'alta' %}
-  <span class="badge bg-danger" title="Mejora anómalamente alta (t ≥ 2.5, p ≈ 0.01). Posible piscina corta.">🔴 Alta</span>
-{% elif s == 'media' %}
-  <span class="badge bg-warning text-dark" title="Mejora algo superior a la media (t entre 1.5 y 2.5).">🟡 Media</span>
-{% elif s == 'baja' %}
-  <span class="badge bg-secondary" title="Mejoras significativamente por debajo de la media (t ≤ −2.5). Piscina posiblemente larga o condiciones difíciles.">🔵 Baja</span>
-{% elif s == 'baja_mod' %}
-  <span class="badge bg-light text-dark border" title="Mejoras algo por debajo de la media.">🔵 Baja mod.</span>
-{% elif s == 'insuf' %}
-  <span class="badge bg-light text-muted border" title="Menos de 5 nadadores, datos insuficientes.">⚪ Insuf.</span>
-{% else %}
-  <span class="badge bg-success">🟢 Normal</span>
-{% endif %}
-{% endmacro %}
 
 {% endblock %}
 

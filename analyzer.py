@@ -8,15 +8,29 @@ import statistics
 from dataclasses import dataclass, field
 
 
+def _full_birth_year(year_str: str, reference_year: int) -> int | None:
+    """Convert a 2-digit birth year string to a 4-digit year."""
+    if not year_str:
+        return None
+    try:
+        yy = int(str(year_str).strip()[-2:])
+    except (ValueError, TypeError):
+        return None
+    ref_yy = reference_year % 100
+    return (2000 + yy) if yy <= ref_yy else (1900 + yy)
+
+
 @dataclass
 class ImprovementRecord:
     event_number: int
     gender: str
     distance: int
     stroke: str
+    relay: bool
     swimmer_name: str
     club: str
     year: str
+    age: int | None
     entry_time: float
     result_time: float
     improvement_sec: float      # positive = faster
@@ -32,6 +46,7 @@ class Stats:
     std_improvement_sec: float = 0.0
     median_improvement_sec: float = 0.0
     pct_improved: float = 0.0
+    mean_age: float | None = None
     records: list = field(default_factory=list)
 
     def to_dict(self) -> dict:
@@ -42,6 +57,7 @@ class Stats:
             'std_improvement_sec': round(self.std_improvement_sec, 3),
             'median_improvement_sec': round(self.median_improvement_sec, 3),
             'pct_improved': round(self.pct_improved, 1),
+            'mean_age': round(self.mean_age, 1) if self.mean_age is not None else None,
         }
 
 
@@ -50,6 +66,7 @@ def _compute_stats(records: list[ImprovementRecord]) -> Stats:
         return Stats()
     improvements = [r.improvement_sec for r in records]
     improved = [r for r in records if r.improvement_sec > 0]
+    ages = [r.age for r in records if r.age is not None]
     return Stats(
         count=len(records),
         improved_count=len(improved),
@@ -57,6 +74,7 @@ def _compute_stats(records: list[ImprovementRecord]) -> Stats:
         std_improvement_sec=statistics.stdev(improvements) if len(improvements) > 1 else 0.0,
         median_improvement_sec=statistics.median(improvements),
         pct_improved=100 * len(improved) / len(records),
+        mean_age=statistics.mean(ages) if ages else None,
         records=records,
     )
 
@@ -65,6 +83,7 @@ def analyze(
     entries: list[dict],
     results: list[dict],
     competition_pool_type: str,
+    competition_year: int = 0,
 ) -> dict:
     """
     Match entries to results and compute improvement statistics.
@@ -116,15 +135,19 @@ def analyze(
 
         imp_sec = entry['weighted_time'] - r['result_time']  # positive = faster
         imp_pct = 100 * imp_sec / entry['weighted_time'] if entry['weighted_time'] else 0.0
+        birth_yr = _full_birth_year(r.get('year', ''), competition_year) if competition_year else None
+        age = (competition_year - birth_yr) if (birth_yr and competition_year) else None
 
         improvement_records.append(ImprovementRecord(
             event_number=r['event_number'],
             gender=r['gender'],
             distance=r['distance'],
             stroke=r['stroke'],
+            relay=bool(r.get('relay', False)),
             swimmer_name=r['swimmer_name'],
             club=r['club'],
             year=r['year'],
+            age=age,
             entry_time=entry['weighted_time'],
             result_time=r['result_time'],
             improvement_sec=imp_sec,
@@ -170,18 +193,20 @@ def analyze(
 
 def _rec_to_dict(r: ImprovementRecord) -> dict:
     return {
-        'event_number': r.event_number,
-        'gender': r.gender,
-        'distance': r.distance,
-        'stroke': r.stroke,
-        'swimmer_name': r.swimmer_name,
-        'club': r.club,
-        'year': r.year,
-        'entry_time': round(r.entry_time, 2),
-        'result_time': round(r.result_time, 2),
+        'event_number':   r.event_number,
+        'gender':         r.gender,
+        'distance':       r.distance,
+        'stroke':         r.stroke,
+        'relay':          r.relay,
+        'swimmer_name':   r.swimmer_name,
+        'club':           r.club,
+        'year':           r.year,
+        'age':            r.age,
+        'entry_time':     round(r.entry_time, 2),
+        'result_time':    round(r.result_time, 2),
         'improvement_sec': round(r.improvement_sec, 3),
         'improvement_pct': round(r.improvement_pct, 2),
-        'pool_length': r.pool_length,
+        'pool_length':    r.pool_length,
     }
 
 
@@ -355,7 +380,7 @@ COPA_POINTS = [19, 16, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
 COPA_POINTS_RELAY = [p * 2 for p in COPA_POINTS]
 
 
-def compute_copa_classification(all_results: list[dict]) -> dict:
+def compute_copa_classification(all_results: list[dict], reference_year: int = 0) -> dict:
     """
     Simulate a combined Copa de Clubs classification.
 
@@ -408,11 +433,14 @@ def compute_copa_classification(all_results: list[dict]) -> dict:
             copa_pts = prev_copa_pts
             club = (r['club'] or '').rstrip('- ').strip()
 
+            birth_yr = _full_birth_year(r.get('year', ''), reference_year) if reference_year else None
+            age = (reference_year - birth_yr) if (birth_yr and reference_year) else None
             annotated.append({
                 'pos': pos,
                 'swimmer_name': r['swimmer_name'],
                 'club': club,
                 'year': r.get('year', ''),
+                'age': age,
                 'result_time': r['result_time'],
                 'division': r.get('division', ''),
                 'copa_points': copa_pts,
@@ -424,15 +452,27 @@ def compute_copa_classification(all_results: list[dict]) -> dict:
                 entry['events_scored'] += 1
                 entry['breakdown'][event_key] = entry['breakdown'].get(event_key, 0) + copa_pts
 
+        scorer_ages = [f['age'] for f in annotated if f['copa_points'] > 0 and f['age'] is not None]
         events_out[event_key] = {
-            'gender': gender,
+            'gender':   gender,
             'distance': distance,
-            'stroke': stroke,
+            'stroke':   stroke,
+            'relay':    is_relay,
+            'mean_age': round(statistics.mean(scorer_ages), 1) if scorer_ages else None,
             'finishers': annotated,
         }
 
+    # Mean age of point-scoring swimmers per club
+    club_ages: dict[str, list[int]] = {}
+    for ev in events_out.values():
+        for f in ev['finishers']:
+            if f['copa_points'] > 0 and f['age'] is not None and f['club']:
+                club_ages.setdefault(f['club'], []).append(f['age'])
+
     club_ranking = sorted(
-        [{'club': club, **data} for club, data in club_points.items()],
+        [{'club': club, **data,
+          'mean_age': round(statistics.mean(club_ages[club]), 1) if club in club_ages else None}
+         for club, data in club_points.items()],
         key=lambda x: (-x['total'], x['club'])
     )
     for i, row in enumerate(club_ranking):

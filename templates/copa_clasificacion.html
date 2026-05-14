@@ -41,6 +41,7 @@
                 <th style="width:3rem">#</th>
                 <th>Club</th>
                 <th class="text-center">Pruebas<br>puntuadas</th>
+                <th class="text-end">Edad media</th>
                 <th class="text-end">Puntos</th>
               </tr>
             </thead>
@@ -58,14 +59,15 @@
                 </td>
                 <td class="fw-semibold">{{ row.club }}</td>
                 <td class="text-center">{{ row.events_scored }}</td>
+                <td class="text-end text-muted">{{ row.mean_age if row.mean_age is not none else '&mdash;' }}</td>
                 <td class="text-end fw-bold fs-5">{{ row.total }}</td>
               </tr>
               <tr class="collapse" id="detail-{{ loop.index }}">
-                <td colspan="4" class="bg-light py-2 px-4">
+                <td colspan="5" class="bg-light py-2 px-4">
                   <div class="d-flex flex-wrap gap-2">
                     {% for ev_key, pts in row.breakdown.items() | sort(attribute='1', reverse=True) %}
                     <span class="badge bg-primary">
-                      {{ ev_key | replace('_', ' ') }}: {{ pts }} pts
+                      {{ ev_key | fmt_event_key }}: {{ pts }} pts
                     </span>
                     {% endfor %}
                   </div>
@@ -104,7 +106,8 @@
          data-gender="{{ ev.gender }}" data-stroke="{{ ev.stroke }}">
       <h5 class="mb-2">
         <span class="badge bg-secondary">{{ ev.gender }}</span>
-        {{ ev.distance }}m {{ ev.stroke }}
+        {% if ev.relay %}4x{{ ev.distance // 4 }}{% else %}{{ ev.distance }}{% endif %}m {{ ev.stroke }}
+        {% if ev.mean_age is not none %}<small class="text-muted ms-2">Edad media: {{ ev.mean_age }}</small>{% endif %}
       </h5>
       <div class="table-responsive">
         <table class="table table-sm table-striped table-hover">
@@ -113,8 +116,9 @@
               <th style="width:3rem">Pos.</th>
               <th>Nadador/a</th>
               <th>Club</th>
-              <th>Año</th>
-              <th>División</th>
+              <th>A&ntilde;o</th>
+              <th>Edad</th>
+              <th>Divisi&oacute;n</th>
               <th class="text-end">Tiempo</th>
               <th class="text-end">Puntos Copa</th>
             </tr>
@@ -126,10 +130,11 @@
               <td>{{ f.swimmer_name }}</td>
               <td>{{ f.club }}</td>
               <td>{{ f.year }}</td>
+              <td class="text-muted">{{ f.age if f.age is not none else '&mdash;' }}</td>
               <td><span class="badge bg-light text-dark border">{{ f.division }}</span></td>
               <td class="text-end font-monospace">{{ f.result_time | fmt_time }}</td>
               <td class="text-end fw-bold {% if f.copa_points > 0 %}text-primary{% endif %}">
-                {{ f.copa_points if f.copa_points > 0 else '–' }}
+                {{ f.copa_points if f.copa_points > 0 else '&ndash;' }}
               </td>
             </tr>
             {% endfor %}

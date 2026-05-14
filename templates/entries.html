@@ -84,7 +84,7 @@
         {% if e.event_number not in seen %}
           {% set _ = seen.append(e.event_number) %}
           <option value="{{ e.event_number }}">
-            Pr.{{ e.event_number }} &ndash; {{ e.gender }} {{ e.distance }}m {{ e.stroke }}{% if e.relay %} (relevo){% endif %}
+            Pr.{{ e.event_number }} &ndash; {{ e.gender }} {% if e.relay %}4x{{ e.distance // 4 }}{% else %}{{ e.distance }}{% endif %}m {{ e.stroke }}
           </option>
         {% endif %}
       {% endfor %}
@@ -98,19 +98,19 @@
 <!-- Table -->
 <div class="table-responsive">
   <table class="table table-sm table-hover table-bordered mb-0" id="entriesTable">
-    <thead>
+    <thead class="table-dark">
       <tr>
-        <th class="sticky-header" style="width:32px">
+        <th style="width:32px">
           <input type="checkbox" id="selectAll" class="form-check-input">
         </th>
-        <th class="sticky-header">Prueba</th>
-        <th class="sticky-header">#</th>
-        <th class="sticky-header">Nadador</th>
-        <th class="sticky-header">A&ntilde;o</th>
-        <th class="sticky-header">Club</th>
-        <th class="sticky-header">Pisc.</th>
-        <th class="sticky-header">M.Ponderada</th>
-        <th class="sticky-header" style="width:90px"></th>
+        <th>Prueba</th>
+        <th>#</th>
+        <th>Nadador</th>
+        <th>A&ntilde;o</th>
+        <th>Club</th>
+        <th>Pisc.</th>
+        <th>M.Ponderada</th>
+        <th style="width:90px"></th>
       </tr>
     </thead>
     <tbody>
@@ -123,7 +123,7 @@
         <td class="text-muted small">
           Pr.{{ e.event_number }}<br>
           <span class="badge bg-secondary">
-            {{ e.gender }} {{ e.distance }}m {{ e.stroke }}{% if e.relay %} &times;{% endif %}
+            {{ e.gender }} {% if e.relay %}4x{{ e.distance // 4 }}{% else %}{{ e.distance }}{% endif %}m {{ e.stroke }}
           </span>
         </td>
         <td>{{ e.seq }}</td>
@@ -385,12 +385,5 @@ document.getElementById('addSaveBtn').addEventListener('click', async () => {
 
 <style>
 .btn-xs { padding: .1rem .35rem; font-size: .75rem; }
-.sticky-header {
-  position: sticky;
-  top: 56px;
-  z-index: 2;
-  background-color: #212529;
-  color: #fff;
-}
 </style>
 {% endblock %}
