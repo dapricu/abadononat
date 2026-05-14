@@ -403,70 +403,114 @@ def _parse_result_row(chars: list, event: dict) -> dict | None:
 
     after_pos = left_text[pos_match.end():].strip() if pos_match else left_text
 
-    # Name: longest alphabetical prefix — stops at the first digit.
-    # This handles cases where year chars immediately follow a name initial
-    # with no space (e.g. "GONZALVEZ, J11C.N.T" → name="GONZALVEZ, J", rest="11C.N.T").
-    name_m = re.match(r'^([A-Za-záéíóúÁÉÍÓÚüÜñÑ\s,\.\-]+)', after_pos)
-    if name_m:
-        swimmer_name = name_m.group(1).rstrip(' .,').strip()
-        numeric_rest = after_pos[name_m.end():]
+    # FNCV names follow "APELLIDO(S), Nombre" format.  When names are very long
+    # the PDF renderer places birth-year digit(s) at the same X positions as the
+    # last name chars; pdfplumber then interleaves them, e.g.:
+    #   "DE ANDRES NUÑEZ ROMERO0, M4"  →  name "… ROMERO, M"  year "04"
+    # Strategy: split on the comma, strip trailing digit(s) from the surname half
+    # and leading digit(s) from the given-name half, then combine them as the year.
+    left_tail   = ''
+    year_digits = ''
+    comma_pos   = after_pos.find(',')
+
+    if comma_pos > 0:
+        surname_raw = after_pos[:comma_pos]
+        rest_raw    = after_pos[comma_pos + 1:].lstrip()
+
+        # Trailing digit(s) on surname = high part of birth year
+        s_trail = re.search(r'(\d{1,2})$', surname_raw)
+        if s_trail:
+            year_digits   = s_trail.group(1)
+            clean_surname = surname_raw[:s_trail.start()].rstrip()
+        else:
+            clean_surname = surname_raw.rstrip()
+
+        # Leading alpha chars = given name / initial
+        given_m = re.match(r'([A-Za-záéíóúÁÉÍÓÚüÜñÑ]+\.?)', rest_raw)
+        if given_m:
+            given_name  = given_m.group(1).rstrip('.')
+            after_given = rest_raw[given_m.end():].lstrip()
+
+            # Leading digit(s) immediately after the given name = low part of year.
+            # Guard against accidentally consuming a split-time value (e.g. "1:30").
+            g_trail = re.match(r'(\d{1,2})(?![\d\.])', after_given)
+            if g_trail:
+                year_digits += g_trail.group(1)
+                left_tail    = after_given[g_trail.end():]
+            elif len(year_digits) < 2:
+                # Fallback: two digits separated by one non-letter char
+                # (PDF sometimes renders "10" as "1.0" or "1 0")
+                g_trail2 = re.match(r'(\d)[^A-Za-z\d](\d)(?![\d\.])', after_given)
+                if g_trail2:
+                    year_digits += g_trail2.group(1) + g_trail2.group(2)
+                    left_tail    = after_given[g_trail2.end():]
+                else:
+                    left_tail = after_given
+            else:
+                left_tail = after_given
+
+            swimmer_name = f'{clean_surname}, {given_name}'
+        else:
+            swimmer_name = clean_surname
+            left_tail    = rest_raw
+
+        year = year_digits[:2] if year_digits else ''
+
     else:
-        swimmer_name = re.sub(r'[\d\.\s,]+$', '', after_pos).strip().rstrip(',').strip()
-        numeric_rest = ''
+        # No comma in left text — fall back to alphabetical-prefix extraction
+        name_m = re.match(r'^([A-Za-záéíóúÁÉÍÓÚüÜñÑ\s,\.\-]+)', after_pos)
+        if name_m:
+            swimmer_name = name_m.group(1).rstrip(' .,').strip()
+            numeric_rest = after_pos[name_m.end():]
+        else:
+            swimmer_name = re.sub(r'[\d\.\s,]+$', '', after_pos).strip().rstrip(',').strip()
+            numeric_rest = ''
+
+        yr_m = re.search(r'\d{2}', numeric_rest) if numeric_rest else None
+        if yr_m:
+            year      = yr_m.group(0)
+            left_tail = numeric_rest[yr_m.end():]
+        else:
+            yr_m2 = re.search(r'(\d)[^A-Za-z\d](\d)', numeric_rest) if numeric_rest else None
+            if yr_m2:
+                year      = yr_m2.group(1) + yr_m2.group(2)
+                left_tail = numeric_rest[yr_m2.end():]
+            else:
+                year      = ''
+                left_tail = numeric_rest
 
     if not swimmer_name:
         return None
-
-    # Year: FIRST pair of consecutive digits in the numeric remainder.
-    # Using the first match avoids mistaking split-time digits (e.g. "5:01.12"
-    # immediately after the year) for the birth year.
-    # Fallback: two digits separated by a single non-letter char — PDF renderers
-    # occasionally insert a space or period between adjacent year digits (e.g.
-    # "1.0" for year "10").
-    yr_m = re.search(r'\d{2}', numeric_rest) if numeric_rest else None
-    if yr_m:
-        year      = yr_m.group(0)
-        left_tail = numeric_rest[yr_m.end():]
-    else:
-        yr_m2 = re.search(r'(\d)[^A-Za-z\d](\d)', numeric_rest) if numeric_rest else None
-        if yr_m2:
-            year      = yr_m2.group(1) + yr_m2.group(2)
-            left_tail = numeric_rest[yr_m2.end():]
-        else:
-            year      = ''
-            left_tail = numeric_rest
 
     # Club prefix: strip digit/time noise from the left tail.
     # Reject if ':' is still present (means the tail is a split-time label).
     stripped_tail = re.sub(r'^[\d\.\s:,]+', '', left_tail).strip()
     club_prefix   = stripped_tail if stripped_tail and ':' not in stripped_tail else ''
 
-    # If the year was not found in the left column, the birth-year chars may
-    # have landed at X >= YEAR_COL_END (PDF rendering variation).  Extract them
-    # from the start of right_text so they are not silently swallowed by the
-    # club-stripping step below.  Guard with a negative lookahead for '.' or
-    # another digit so we don't consume points/times (e.g. "25.28" or "903.4").
-    if not year and right_text:
+    # If year is still missing/incomplete, the year chars may have landed at
+    # X >= YEAR_COL_END.  Extract them from the start of right_text before the
+    # club regex runs.  Guard with (?![\d\.]) to avoid consuming points/times.
+    if len(year) < 2 and right_text:
         rt = right_text.lstrip()
         yr_rt_m = re.match(r'^(\d{2,4})(?![\d\.])', rt)
         if yr_rt_m:
             raw_yr     = yr_rt_m.group(1)
-            year       = raw_yr[-2:]        # keep last 2 digits (handles 4-digit years)
+            year       = (year + raw_yr)[:2]   # prepend any already-found digit
             right_text = rt[yr_rt_m.end():].lstrip()
         else:
-            # Fallback: two digits with a single non-letter separator at start of right_text
             yr_rt_m2 = re.match(r'^(\d)[^A-Za-z\d](\d)(?![\d\.])', rt)
             if yr_rt_m2:
-                year       = yr_rt_m2.group(1) + yr_rt_m2.group(2)
+                year       = (year + yr_rt_m2.group(1) + yr_rt_m2.group(2))[:2]
                 right_text = rt[yr_rt_m2.end():].lstrip()
 
-    # Strip any remaining leading digits from right_text (handles partial year
-    # digits that straddle the X = YEAR_COL_END boundary).
+    # Strip any remaining leading digits from right_text (partial year digit
+    # that straddled the X = YEAR_COL_END boundary).
     right_stripped = re.sub(r'^[\d\s]+', '', right_text).strip()
     right_clean    = right_stripped if right_stripped and right_stripped[0].isalpha() else right_text
 
-    # Full club text = prefix + right column; regex stops at first digit
-    full_right = (club_prefix + right_clean).strip()
+    # Full club = prefix + right column.  Join with a space so club words that
+    # straddle the X=233 boundary are not merged ("Cst-Cst"+"Costa" → "Cst-Cst Costa").
+    full_right = ' '.join(filter(None, [club_prefix, right_clean])).strip()
     club_m     = re.match(r'^([A-Za-z\xe0-\xffÀ-ɏ\s\.\-]+)', full_right)
     club       = club_m.group(1).strip().rstrip('- ').strip() if club_m else ''
     club       = re.sub(r'\s+[A-Z]{2}$', '', club).strip().rstrip('- ').strip()
