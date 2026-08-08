@@ -1,0 +1,1791 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>El abandono en la natación</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700;800&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <style>
+    /* ── Custom properties ─────────────────────────────────── */
+    :root {
+      --color-deep:   #00c5ff;
+      --color-mid:    #0095cc;
+      --color-light:  #1a3a5c;
+      --color-bg:     #0a0e1a;
+      --color-white:  #111827;
+      --color-text:   #e8f0fe;
+      --color-muted:  #6b7f9e;
+      --color-border: #1e2d45;
+      --color-accent2:#ff6b35;
+      --color-surface2:#1a2235;
+
+      --sidebar-width: 240px;
+      --mobile-header-h: 52px;
+
+      --font-display: 'Barlow Condensed', sans-serif;
+      --font-body:    'Barlow', sans-serif;
+
+      --section-gap: 4rem;
+      --l1-color: #4db8ff;  --l1-bg: #1a3a5c;
+      --l2-color: #4dffb0;  --l2-bg: #1a4a3a;
+      --l3-color: #ffdb4d;  --l3-bg: #3a3a1a;
+      --l4-color: #ff6b9d;  --l4-bg: #3a1a2a;
+
+      --transition: 0.2s ease;
+    }
+
+    /* ── Reset ──────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; font-size: 16px; }
+    body {
+      font-family: var(--font-body);
+      color: var(--color-text);
+      background: var(--color-bg);
+      line-height: 1.6;
+    }
+    a { color: inherit; text-decoration: none; }
+    ul { list-style: none; }
+
+    /* ── Mobile header (hidden on desktop) ──────────────────── */
+    .mobile-header {
+      display: none;
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      height: var(--mobile-header-h);
+      background: #0d1829;
+      border-bottom: 2px solid var(--color-deep);
+      box-shadow: 0 4px 20px rgba(0,197,255,0.1);
+      color: var(--color-text);
+      padding: 0 1.25rem;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .mobile-header .site-title {
+      font-family: var(--font-display);
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .nav-toggle {
+      background: none;
+      border: 2px solid var(--color-deep);
+      color: var(--color-deep);
+      font-size: 1.1rem;
+      cursor: pointer;
+      padding: 0.2rem 0.5rem;
+      line-height: 1;
+      border-radius: 4px;
+      transition: background var(--transition), color var(--transition);
+    }
+    .nav-toggle:hover { background: var(--color-deep); color: #000; }
+
+    /* ── Layout grid ────────────────────────────────────────── */
+    .layout {
+      display: block;
+      min-height: 100vh;
+    }
+
+    /* ── Sidebar ────────────────────────────────────────────── */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: var(--sidebar-width);
+      height: 100vh;
+      overflow-y: auto;
+      z-index: 50;
+      background: var(--color-white);
+      border-right: 1px solid var(--color-border);
+      padding: 2rem 1rem 2rem 1.25rem;
+    }
+    .sidebar-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .sidebar-logo-mark {
+      width: 28px;
+      height: 28px;
+      border-radius: 0;
+      background: var(--color-deep);
+      flex-shrink: 0;
+    }
+    .sidebar-logo-text {
+      font-family: var(--font-display);
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--color-text);
+      line-height: 1.2;
+    }
+    .sidebar-label {
+      font-family: var(--font-display);
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      color: var(--color-muted);
+      margin-bottom: 0.75rem;
+    }
+    .nav-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .nav-link {
+      display: block;
+      padding: 0.45rem 0.75rem;
+      border-left: 3px solid transparent;
+      border-radius: 0 4px 4px 0;
+      font-size: 0.875rem;
+      font-weight: 400;
+      color: var(--color-text);
+      transition: color var(--transition), border-color var(--transition), background var(--transition);
+    }
+    .nav-link:hover {
+      color: var(--color-deep);
+      background: rgba(0,197,255,0.07);
+      border-left-color: var(--color-mid);
+    }
+    .nav-link.active {
+      color: var(--color-deep);
+      font-weight: 600;
+      border-left-color: var(--color-deep);
+      background: rgba(0,197,255,0.1);
+    }
+
+    /* ── Main content ───────────────────────────────────────── */
+    .content {
+      margin-left: var(--sidebar-width);
+      min-width: 0;
+    }
+
+    /* ── Hero ───────────────────────────────────────────────── */
+    .hero {
+      background: linear-gradient(135deg, #0d1829 0%, #111f3a 100%);
+      border-bottom: 2px solid var(--color-deep);
+      box-shadow: 0 4px 30px rgba(0,197,255,0.12);
+      color: var(--color-text);
+      padding: 5rem 3rem 4.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Ccircle cx='30' cy='30' r='28' fill='none' stroke='rgba(0,197,255,0.04)' stroke-width='1'/%3E%3C/svg%3E") repeat;
+      pointer-events: none;
+    }
+    .hero-inner {
+      position: relative;
+    }
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--color-deep);
+      margin-bottom: 1.25rem;
+    }
+    .hero-eyebrow::before {
+      content: '';
+      display: inline-block;
+      width: 20px;
+      height: 2px;
+      background: var(--color-deep);
+      border-radius: 0;
+    }
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 800;
+      letter-spacing: 3px;
+      line-height: 1.1;
+      margin-bottom: 1.25rem;
+      text-transform: uppercase;
+    }
+    .hero-subtitle {
+      font-size: 1rem;
+      font-weight: 300;
+      color: rgba(232,240,254,0.82);
+      max-width: 54ch;
+      line-height: 1.7;
+      margin-bottom: 2rem;
+      letter-spacing: 0.02em;
+    }
+    .hero-meta {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      font-size: 0.75rem;
+      color: rgba(232,240,254,0.5);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .hero-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .hero-wave {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      line-height: 0;
+    }
+    .hero-wave svg { display: block; }
+
+    /* ── Article ────────────────────────────────────────────── */
+    .article-section {
+      border-bottom: 1px solid var(--color-border);
+      padding: var(--section-gap) 3rem;
+    }
+    .article-section:last-child { border-bottom: none; }
+    .section-inner { }
+    .section-tag {
+      display: inline-block;
+      font-family: var(--font-display);
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      color: var(--color-deep);
+      margin-bottom: 0.6rem;
+    }
+    .section-title {
+      font-family: var(--font-display);
+      font-size: 1.75rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--color-deep);
+      margin-bottom: 1.5rem;
+      padding-bottom: 0.6rem;
+      border-bottom: 2px solid var(--color-border);
+      line-height: 1.2;
+    }
+    .placeholder-text {
+      color: var(--color-muted);
+      font-style: italic;
+      line-height: 1.75;
+      margin-bottom: 0.9rem;
+    }
+    .placeholder-list {
+      list-style: none;
+      margin-top: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .placeholder-list li {
+      padding: 0.6rem 1rem;
+      background: var(--color-white);
+      border: 1px solid var(--color-border);
+      border-left: 3px solid var(--color-light);
+      border-radius: 0 4px 4px 0;
+      color: var(--color-muted);
+      font-style: italic;
+      font-size: 0.9rem;
+    }
+
+    /* ── Scroll reveal ──────────────────────────────────────── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(28px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    .reveal.revealed {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .reveal-delay-1 { transition-delay: 0.12s; }
+    .reveal-delay-2 { transition-delay: 0.24s; }
+    .reveal-delay-3 { transition-delay: 0.36s; }
+
+    /* ── Body text ───────────────────────────────────────────── */
+    .body-text {
+      line-height: 1.8;
+      margin-bottom: 1.25rem;
+      color: var(--color-text);
+    }
+
+    /* ── Type selector ───────────────────────────────────────── */
+    .type-selector {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin: 2rem 0 1.75rem;
+    }
+    .type-btn {
+      padding: 0.4rem 1rem;
+      border-radius: 4px;
+      border: 1px solid var(--color-border);
+      background: transparent;
+      font-family: var(--font-display);
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 1px;
+      color: var(--color-muted);
+      cursor: pointer;
+      transition: border-color var(--transition), color var(--transition),
+                  background var(--transition);
+    }
+    .type-btn:hover {
+      border-color: var(--color-deep);
+      color: var(--color-deep);
+      background: var(--color-surface2);
+    }
+    .type-btn.active {
+      background: var(--color-deep);
+      border-color: var(--color-deep);
+      color: #000;
+    }
+
+    /* ── Definition cards ────────────────────────────────────── */
+    .def-cards {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.25rem;
+    }
+    .def-card {
+      background: var(--color-white);
+      border: 1px solid var(--color-border);
+      border-left: 4px solid var(--color-light);
+      border-radius: 8px;
+      padding: 1.5rem 1.5rem 1.25rem;
+      cursor: default;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.3s ease, box-shadow 0.3s ease,
+                  border-left-color 0.3s ease, opacity 0.35s ease;
+    }
+    .def-card::after {
+      content: '';
+      position: absolute;
+      top: 0; right: 0;
+      width: 80px; height: 80px;
+      background: radial-gradient(circle at top right, rgba(0,197,255,0.06), transparent 70%);
+      pointer-events: none;
+    }
+    .def-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 10px 28px rgba(0,197,255,0.18);
+      border-left-color: var(--color-deep);
+    }
+    .def-card.dimmed {
+      opacity: 0.25;
+      transform: none !important;
+      pointer-events: none;
+    }
+    .def-card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    .def-author-block { display: flex; flex-direction: column; gap: 0.1rem; }
+    .def-author {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--color-deep);
+    }
+    .def-year {
+      font-size: 0.75rem;
+      color: var(--color-muted);
+      font-weight: 500;
+      letter-spacing: 1px;
+    }
+    .def-badge {
+      display: inline-block;
+      padding: 0.25rem 0.8rem;
+      border-radius: 100px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .def-badge--competitivo { background: rgba(0,197,255,0.14); color: var(--color-deep); }
+    .def-badge--deportivo   { background: rgba(0,149,204,0.15); color: #7dd3fc; }
+    .def-badge--ambos       { background: rgba(0,197,255,0.08); color: #90e0ef; }
+
+    .def-quote {
+      font-size: 0.95rem;
+      line-height: 1.78;
+      color: var(--color-text);
+      margin: 0 0 0.75rem;
+      padding-left: 1rem;
+      border-left: 2px solid var(--color-light);
+      font-style: italic;
+    }
+
+    .def-detail {
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      transition: max-height 0.4s ease, opacity 0.35s ease;
+    }
+    .def-card:hover .def-detail {
+      max-height: 160px;
+      opacity: 1;
+    }
+    .def-detail-inner {
+      padding-top: 0.85rem;
+      border-top: 1px dashed var(--color-border);
+      font-size: 0.84rem;
+      color: var(--color-muted);
+      line-height: 1.65;
+    }
+    .def-detail-inner strong { color: var(--color-deep); font-weight: 600; }
+
+    /* ── Stat grid ──────────────────────────────────────────── */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin-top: 1.75rem;
+    }
+    .stat-card {
+      background: var(--color-white);
+      border: 1px solid var(--color-border);
+      border-top: 3px solid var(--color-mid);
+      border-radius: 6px;
+      padding: 1.25rem 1rem;
+      text-align: center;
+    }
+    .stat-number {
+      display: block;
+      font-family: var(--font-display);
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--color-deep);
+      line-height: 1;
+      margin-bottom: 0.4rem;
+    }
+    .stat-label {
+      display: block;
+      font-size: 0.78rem;
+      color: var(--color-muted);
+      line-height: 1.4;
+    }
+
+    /* ── Viz blocks ──────────────────────────────────────────── */
+    .viz-block {
+      background: var(--color-white);
+      border: 1px solid var(--color-border);
+      border-radius: 10px;
+      padding: 1.5rem 1.5rem 1.25rem;
+      margin-top: 2rem;
+    }
+    .viz-title {
+      font-family: var(--font-display);
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--color-deep);
+      margin-bottom: 0.2rem;
+    }
+    .viz-caption {
+      font-size: 0.79rem;
+      color: var(--color-muted);
+      line-height: 1.55;
+      margin-bottom: 1.25rem;
+      letter-spacing: 0.02em;
+    }
+    .chart-wrap {
+      position: relative;
+      height: 260px;
+    }
+
+    /* ── Metric counters ─────────────────────────────────────── */
+    .metric-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-top: 0.5rem;
+    }
+    .metric-card {
+      background: var(--color-white);
+      border: 1px solid var(--color-border);
+      border-radius: 10px;
+      padding: 1.5rem 1rem 1.25rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .metric-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--color-deep), var(--color-mid));
+    }
+    .metric-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 20px rgba(0,197,255,0.15);
+    }
+    .metric-value {
+      font-family: var(--font-display);
+      font-size: 2.8rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      color: var(--color-deep);
+      line-height: 1;
+      margin-bottom: 0.6rem;
+    }
+    .metric-unit { font-size: 1.4rem; opacity: 0.6; }
+    .metric-label {
+      font-size: 0.79rem;
+      color: var(--color-muted);
+      line-height: 1.45;
+      margin-bottom: 0.6rem;
+      letter-spacing: 0.02em;
+    }
+    .metric-sublabel {
+      display: inline-block;
+      font-family: var(--font-display);
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      color: var(--color-deep);
+    }
+
+    @media (max-width: 600px) {
+      .metric-row { grid-template-columns: 1fr; }
+      .chart-wrap { height: 220px; }
+    }
+
+    /* ── Ranking list ────────────────────────────────────────── */
+    .ranking-hint {
+      font-family: var(--font-display);
+      font-size: 0.65rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 0.75rem;
+    }
+    .ranking-list { list-style: none; display: flex; flex-direction: column; gap: 5px; }
+    .rank-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--color-surface2);
+      border: 1px solid var(--color-border);
+      border-left: 3px solid var(--color-border);
+      border-radius: 4px;
+      padding: 9px 14px 9px 10px;
+      transition: background var(--transition), border-left-color var(--transition);
+    }
+    .rank-item:hover {
+      border-left-color: var(--color-deep);
+      background: rgba(0,197,255,0.07);
+    }
+    .rank-num {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--color-deep);
+      min-width: 28px;
+      letter-spacing: 1px;
+    }
+    .rank-icon { font-size: 0.95rem; width: 22px; text-align: center; flex-shrink: 0; }
+    .rank-text { flex: 1; font-size: 0.875rem; color: var(--color-text); line-height: 1.35; }
+
+    /* ── Pathway SVG ─────────────────────────────────────────── */
+    .pathway-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 0.5rem 0; }
+    .pathway-svg { display: block; min-width: 580px; width: 100%; }
+    .pathway-phase {
+      opacity: 0;
+      transition: opacity 0.6s ease;
+    }
+    .pathway-animate .pathway-phase { opacity: 1; }
+    .pathway-animate .pd-1 { transition-delay: 0.05s; }
+    .pathway-animate .pd-2 { transition-delay: 0.2s; }
+    .pathway-animate .pd-3 { transition-delay: 0.35s; }
+    .pathway-animate .pd-4 { transition-delay: 0.5s; }
+    .pathway-animate .pd-5 { transition-delay: 0.65s; }
+    .pathway-line {
+      stroke-dasharray: 782;
+      stroke-dashoffset: 782;
+      transition: stroke-dashoffset 1.4s ease;
+    }
+    .pathway-animate .pathway-line { stroke-dashoffset: 0; }
+
+    /* ── Proposals: staircase & accordion ──────────────────── */
+    .lever-staircase {
+      display: flex;
+      align-items: flex-end;
+      gap: 4px;
+      margin: 2rem 0 0;
+      max-width: 480px;
+    }
+    .lever-step {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+      padding: 0.5rem 0.25rem 0.4rem;
+      border-radius: 4px 4px 0 0;
+      text-align: center;
+    }
+    .lever-step.ls-1 { height: 90px; background: var(--l1-bg); border-top: 3px solid var(--l1-color); }
+    .lever-step.ls-2 { height: 68px; background: var(--l2-bg); border-top: 3px solid var(--l2-color); }
+    .lever-step.ls-3 { height: 48px; background: var(--l3-bg); border-top: 3px solid var(--l3-color); }
+    .lever-step.ls-4 { height: 30px; background: var(--l4-bg); border-top: 3px solid var(--l4-color); }
+    .ls-label {
+      font-family: var(--font-display);
+      font-size: 0.65rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .lever-step.ls-1 .ls-label { color: var(--l1-color); }
+    .lever-step.ls-2 .ls-label { color: var(--l2-color); }
+    .lever-step.ls-3 .ls-label { color: var(--l3-color); }
+    .lever-step.ls-4 .ls-label { color: var(--l4-color); }
+    .ls-sublabel {
+      font-size: 0.6rem;
+      color: var(--color-muted);
+      line-height: 1.2;
+      margin-top: 2px;
+    }
+    .lever-staircase-wrap {
+      margin: 2rem 0;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .ls-caption {
+      font-size: 0.75rem;
+      color: var(--color-muted);
+      margin-top: 0.5rem;
+      letter-spacing: 0.03em;
+    }
+    .ls-caption strong { color: var(--color-text); }
+    /* Lever groups */
+    .lever-group { margin-top: 2.5rem; }
+    .lever-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      padding: 1rem 1.25rem;
+      border-radius: 6px;
+      margin-bottom: 0.75rem;
+    }
+    .lever-badge {
+      font-family: var(--font-display);
+      font-size: 0.65rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 0.2rem 0.65rem;
+      border-radius: 100px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      margin-top: 3px;
+    }
+    .lh-1 { background: var(--l1-bg); border-left: 3px solid var(--l1-color); }
+    .lh-2 { background: var(--l2-bg); border-left: 3px solid var(--l2-color); }
+    .lh-3 { background: var(--l3-bg); border-left: 3px solid var(--l3-color); }
+    .lh-4 { background: var(--l4-bg); border-left: 3px solid var(--l4-color); }
+    .lh-1 .lever-badge { background: var(--l1-color); color: #0a0e1a; }
+    .lh-2 .lever-badge { background: var(--l2-color); color: #0a0e1a; }
+    .lh-3 .lever-badge { background: var(--l3-color); color: #0a0e1a; }
+    .lh-4 .lever-badge { background: var(--l4-color); color: #0a0e1a; }
+    .lever-title {
+      font-family: var(--font-display);
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 0.25rem;
+    }
+    .lh-1 .lever-title { color: var(--l1-color); }
+    .lh-2 .lever-title { color: var(--l2-color); }
+    .lh-3 .lever-title { color: var(--l3-color); }
+    .lh-4 .lever-title { color: var(--l4-color); }
+    .lever-desc { font-size: 0.82rem; color: var(--color-muted); line-height: 1.5; }
+    /* Accordion */
+    .accordion-card {
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 6px;
+      background: var(--color-white);
+    }
+    .accordion-header {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0.85rem 1.25rem;
+      background: none;
+      border: none;
+      cursor: pointer;
+      text-align: left;
+      transition: background var(--transition);
+    }
+    .accordion-header:hover { background: rgba(255,255,255,0.03); }
+    .ah-1 { border-left: 3px solid var(--l1-color); }
+    .ah-2 { border-left: 3px solid var(--l2-color); }
+    .ah-3 { border-left: 3px solid var(--l3-color); }
+    .ah-4 { border-left: 3px solid var(--l4-color); }
+    .acc-icon { font-size: 1.05rem; flex-shrink: 0; }
+    .acc-title {
+      flex: 1;
+      font-size: 0.92rem;
+      color: var(--color-text);
+      font-weight: 500;
+      line-height: 1.35;
+    }
+    .acc-target {
+      font-family: var(--font-display);
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 0.15rem 0.5rem;
+      border-radius: 100px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .at-fed  { background: rgba(0,197,255,0.13);   color: var(--color-deep); }
+    .at-club { background: rgba(77,255,176,0.13);  color: #4dffb0; }
+    .at-ent  { background: rgba(255,219,77,0.13);  color: #ffdb4d; }
+    .acc-chevron {
+      color: var(--color-muted);
+      font-size: 0.85rem;
+      transition: transform var(--transition);
+      flex-shrink: 0;
+    }
+    .accordion-card.open .acc-chevron { transform: rotate(180deg); }
+    .accordion-body {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.38s ease;
+    }
+    .accordion-card.open .accordion-body { max-height: 500px; }
+    .accordion-body-inner {
+      padding: 0.9rem 1.25rem 1.1rem;
+      border-top: 1px solid var(--color-border);
+    }
+    .accordion-body-inner p {
+      font-size: 0.875rem;
+      line-height: 1.75;
+      color: var(--color-text);
+    }
+
+    /* ── Mobile overlay backdrop ────────────────────────────── */
+    .sidebar-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.35);
+      z-index: 99;
+      opacity: 0;
+      transition: opacity var(--transition);
+    }
+    .sidebar-backdrop.visible {
+      opacity: 1;
+    }
+
+    /* ── Responsive ─────────────────────────────────────────── */
+    @media (max-width: 767px) {
+      .mobile-header { display: flex; }
+
+      .layout { display: block; }
+
+      .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: var(--sidebar-width);
+        z-index: 100;
+        transform: translateX(-100%);
+        transition: transform var(--transition);
+        box-shadow: 4px 0 20px rgba(0,0,0,0.15);
+        padding-top: calc(var(--mobile-header-h) + 1.5rem);
+      }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-backdrop { display: block; }
+
+      .hero { padding: 3rem 1.25rem 3.5rem; border-bottom-width: 2px; }
+      .article-section { padding: 2.5rem 1.25rem; }
+    }
+
+    @media (max-width: 480px) {
+      .stat-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Mobile header -->
+  <header class="mobile-header">
+    <span class="site-title">Abandono en Natación</span>
+    <button class="nav-toggle" aria-label="Abrir menú de navegación" aria-expanded="false" aria-controls="sidebar">&#9776;</button>
+  </header>
+
+  <!-- Sidebar backdrop for mobile -->
+  <div class="sidebar-backdrop" id="sidebar-backdrop" aria-hidden="true"></div>
+
+  <div class="layout">
+
+    <!-- Lateral fixed navigation -->
+    <nav class="sidebar" id="sidebar" aria-label="Navegación de secciones">
+      <div class="sidebar-logo">
+        <div class="sidebar-logo-mark" aria-hidden="true"></div>
+        <span class="sidebar-logo-text">Abandono en Natación</span>
+      </div>
+      <p class="sidebar-label">Contenido</p>
+      <ul class="nav-list" role="list">
+        <li><a class="nav-link" href="#introduccion">Introducción</a></li>
+        <li><a class="nav-link" href="#el-problema">El problema del abandono</a></li>
+        <li><a class="nav-link" href="#gravedad">La gravedad del problema</a></li>
+        <li><a class="nav-link" href="#motivaciones">Motivaciones</a></li>
+        <li><a class="nav-link" href="#propuestas">Propuestas de mejora</a></li>
+        <li><a class="nav-link" href="#conclusiones">Conclusiones</a></li>
+      </ul>
+    </nav>
+
+    <!-- Main content -->
+    <main class="content" id="main-content">
+
+      <!-- Hero section -->
+      <section class="hero" id="hero" aria-label="Encabezado principal">
+        <div class="hero-inner">
+          <p class="hero-eyebrow">Investigación · Natación · Deporte</p>
+          <h1 class="hero-title">El abandono en la natación:<br>causas, datos y soluciones</h1>
+          <p class="hero-subtitle">[Placeholder: descripción introductoria del artículo. Un análisis en profundidad sobre por qué los nadadores dejan el deporte y cómo podemos retenerlos.]</p>
+          <div class="hero-meta">
+            <span class="hero-meta-item">&#128197; [Fecha]</span>
+            <span class="hero-meta-item">&#128196; [Autor]</span>
+            <span class="hero-meta-item">&#9201; [Tiempo de lectura]</span>
+          </div>
+        </div>
+        <div class="hero-wave" aria-hidden="true">
+          <svg viewBox="0 0 1440 48" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+            <path d="M0,32 C360,0 1080,64 1440,32 L1440,48 L0,48 Z" fill="#0a0e1a"/>
+          </svg>
+        </div>
+      </section>
+
+      <!-- Article sections -->
+      <article class="article">
+
+        <section id="introduccion" class="article-section">
+          <div class="section-inner">
+            <span class="section-tag">01 · Introducción</span>
+            <h2 class="section-title">Introducción</h2>
+            <p class="placeholder-text">[Placeholder: Contexto general sobre el fenómeno del abandono deportivo en la natación. Importancia del tema a nivel nacional e internacional.]</p>
+            <p class="placeholder-text">[Placeholder: Relevancia del artículo, preguntas que se pretenden responder y estructura general del documento.]</p>
+          </div>
+        </section>
+
+        <section id="el-problema" class="article-section">
+          <div class="section-inner">
+            <span class="section-tag">02 · El problema</span>
+            <h2 class="section-title">El problema del problema</h2>
+
+            <p class="body-text reveal">
+              Antes de analizar el abandono en la natación es necesario detenerse en un paso previo
+              frecuentemente ignorado: ¿qué entendemos exactamente por «abandono»? La literatura
+              científica no ofrece una respuesta unívoca. Distintos autores han delimitado el concepto
+              de forma diferente según el contexto de práctica, el nivel competitivo y los mecanismos
+              de salida del deportista.
+            </p>
+            <p class="body-text reveal">
+              Esta falta de consenso dificulta la comparación entre estudios y la aplicación de
+              intervenciones preventivas eficaces. A continuación se presentan las tres
+              conceptualizaciones más citadas en el ámbito de la natación.
+            </p>
+
+            <!-- Type selector -->
+            <div class="type-selector reveal" role="group" aria-label="Filtrar definiciones por tipo de abandono">
+              <button class="type-btn active" data-filter="all">Todos</button>
+              <button class="type-btn" data-filter="competitivo">Abandono competitivo</button>
+              <button class="type-btn" data-filter="deportivo">Abandono deportivo</button>
+            </div>
+
+            <!-- Definition cards -->
+            <div class="def-cards" role="list" aria-live="polite">
+
+              <article class="def-card reveal reveal-delay-1" data-type="competitivo" role="listitem">
+                <div class="def-card-header">
+                  <div class="def-author-block">
+                    <span class="def-author">Brat</span>
+                    <span class="def-year">1981</span>
+                  </div>
+                  <span class="def-badge def-badge--competitivo">Abandono competitivo</span>
+                </div>
+                <blockquote class="def-quote">
+                  El abandono en el deporte de competición se entiende como la retirada voluntaria
+                  de un deportista de la práctica organizada y estructurada, con independencia de
+                  que continúe realizando actividad física de forma recreativa o informal.
+                </blockquote>
+                <div class="def-detail">
+                  <div class="def-detail-inner">
+                    <strong>Enfoque:</strong> Brat circunscribe el abandono al ámbito competitivo
+                    y estructurado, separándolo explícitamente de la práctica informal. Su modelo
+                    influyó en los estudios posteriores sobre natación federada y clubes de élite.
+                  </div>
+                </div>
+              </article>
+
+              <article class="def-card reveal reveal-delay-2" data-type="deportivo" role="listitem">
+                <div class="def-card-header">
+                  <div class="def-author-block">
+                    <span class="def-author">Robinson</span>
+                    <span class="def-year">1985</span>
+                  </div>
+                  <span class="def-badge def-badge--deportivo">Abandono deportivo</span>
+                </div>
+                <blockquote class="def-quote">
+                  El abandono deportivo implica la cesación total y permanente de la participación
+                  en una modalidad deportiva concreta, sin que el deportista transfiera su práctica
+                  a otra disciplina o contexto recreativo equivalente.
+                </blockquote>
+                <div class="def-detail">
+                  <div class="def-detail-inner">
+                    <strong>Enfoque:</strong> Robinson amplía el concepto al contemplar la
+                    totalidad de la trayectoria deportiva. Su definición es especialmente útil
+                    en estudios longitudinales de natación y para medir el abandono real frente
+                    al transferido.
+                  </div>
+                </div>
+              </article>
+
+              <article class="def-card reveal reveal-delay-3" data-type="competitivo" role="listitem">
+                <div class="def-card-header">
+                  <div class="def-author-block">
+                    <span class="def-author">Klint</span>
+                    <span class="def-year">1987</span>
+                  </div>
+                  <span class="def-badge def-badge--competitivo">Abandono competitivo</span>
+                </div>
+                <blockquote class="def-quote">
+                  El abandono debe entenderse como un proceso motivacional en el que el deportista,
+                  al no ver satisfechas sus metas de participación —ya sean de competencia percibida,
+                  afiliación o disfrute—, opta por retirarse de la práctica organizada.
+                </blockquote>
+                <div class="def-detail">
+                  <div class="def-detail-inner">
+                    <strong>Enfoque:</strong> Klint introduce la dimensión motivacional como eje
+                    del abandono. Su perspectiva resulta especialmente relevante en el deporte
+                    juvenil y en los programas de formación de natación, donde el disfrute
+                    es el principal factor de retención.
+                  </div>
+                </div>
+              </article>
+
+            </div><!-- /.def-cards -->
+          </div>
+        </section>
+
+        <section id="gravedad" class="article-section">
+          <div class="section-inner">
+            <span class="section-tag">03 · Gravedad</span>
+            <h2 class="section-title">¿Cuál es la gravedad?</h2>
+
+            <p class="body-text reveal">
+              Los datos internacionales revelan que la natación presenta una de las tasas de abandono
+              más elevadas entre los deportes juveniles organizados en Europa. Tres visualizaciones
+              permiten dimensionar el problema: la comparación con otros deportes, la curva de
+              participación por edad y los indicadores propuestos para su seguimiento sistemático.
+            </p>
+
+            <!-- Chart 1: bar chart -->
+            <div class="viz-block reveal">
+              <p class="viz-title">Abandono antes de los 18 años: natación vs. otros deportes (Europa)</p>
+              <p class="viz-caption">Porcentaje acumulado de deportistas que abandonan la práctica organizada antes de cumplir 18 años, por modalidad deportiva.</p>
+              <div class="chart-wrap">
+                <canvas id="chart-barras" aria-label="Gráfico de barras: tasa de abandono por deporte"></canvas>
+              </div>
+            </div>
+
+            <!-- Chart 2: line chart -->
+            <div class="viz-block reveal">
+              <p class="viz-title">Curva de participación por edad — Swimming Australia</p>
+              <p class="viz-caption">Participantes activos en miles según grupo de edad. El descenso se acelera bruscamente entre los <strong>10 y 11 años</strong>, momento crítico de la especialización deportiva.</p>
+              <div class="chart-wrap">
+                <canvas id="chart-linea" aria-label="Gráfico de línea: participación Swimming Australia por edad"></canvas>
+              </div>
+            </div>
+
+            <!-- Metric counters -->
+            <p class="body-text reveal" style="margin-top:2rem;">
+              El artículo propone tres indicadores clave para monitorizar la salud del sistema
+              deportivo en natación y evaluar la eficacia de las intervenciones preventivas:
+            </p>
+            <div class="metric-row">
+              <div class="metric-card reveal reveal-delay-1">
+                <div class="metric-value">
+                  <span class="metric-num" data-target="12">0</span><span class="metric-unit">%</span>
+                </div>
+                <p class="metric-label">Deportistas que permanecen en competición tras cumplir 20 años</p>
+                <span class="metric-sublabel">Indicador 1</span>
+              </div>
+              <div class="metric-card reveal reveal-delay-2">
+                <div class="metric-value">
+                  <span class="metric-num" data-target="75">0</span><span class="metric-unit">%</span>
+                </div>
+                <p class="metric-label">Tasa de abandono competitivo acumulada entre los 12 y 18 años</p>
+                <span class="metric-sublabel">Indicador 2</span>
+              </div>
+              <div class="metric-card reveal reveal-delay-3">
+                <div class="metric-value">
+                  <span class="metric-num" data-target="38">0</span><span class="metric-unit">%</span>
+                </div>
+                <p class="metric-label">Abandono deportivo total: no practican ninguna modalidad acuática</p>
+                <span class="metric-sublabel">Indicador 3</span>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <section id="motivaciones" class="article-section">
+          <div class="section-inner">
+            <span class="section-tag">04 · Motivaciones</span>
+            <h2 class="section-title">¿Por qué nadan? ¿Por qué dejan de nadar?</h2>
+
+            <p class="body-text reveal">
+              Comprender el abandono exige entender primero qué impulsa la participación. Dos grandes
+              marcos teóricos responden a esta pregunta desde ángulos complementarios: las fuentes de
+              diversión percibida por los propios nadadores y el clima motivacional que genera el entorno
+              —entrenador, club, familia— en torno al deportista.
+            </p>
+
+            <!-- 1: USA Swimming fun sources ranking -->
+            <div class="viz-block reveal">
+              <p class="viz-title">Las 10 fuentes de diversión en natación — USA Swimming</p>
+              <p class="viz-caption">
+                Según el estudio de USA Swimming, estos son los diez factores que los nadadores jóvenes
+                identifican como fuentes de disfrute, ordenados por importancia.
+              </p>
+              <ol class="ranking-list" id="ranking-list">
+                <li class="rank-item" data-id="1">
+                  <span class="rank-num">01</span>
+                  <span class="rank-icon">🏊</span>
+                  <span class="rank-text">Esforzarse al máximo y dar lo mejor de uno mismo</span>
+                </li>
+                <li class="rank-item" data-id="2">
+                  <span class="rank-num">02</span>
+                  <span class="rank-icon">📈</span>
+                  <span class="rank-text">Mejorar las habilidades técnicas y aprender cosas nuevas</span>
+                </li>
+                <li class="rank-item" data-id="3">
+                  <span class="rank-num">03</span>
+                  <span class="rank-icon">😄</span>
+                  <span class="rank-text">Vivir emociones y momentos excitantes durante la práctica</span>
+                </li>
+                <li class="rank-item" data-id="4">
+                  <span class="rank-num">04</span>
+                  <span class="rank-icon">👥</span>
+                  <span class="rank-text">Estar con los amigos y pertenecer a un grupo</span>
+                </li>
+                <li class="rank-item" data-id="5">
+                  <span class="rank-num">05</span>
+                  <span class="rank-icon">🎯</span>
+                  <span class="rank-text">Superar retos personales y situaciones difíciles</span>
+                </li>
+                <li class="rank-item" data-id="6">
+                  <span class="rank-num">06</span>
+                  <span class="rank-icon">💪</span>
+                  <span class="rank-text">Mantener la condición física y estar en forma</span>
+                </li>
+                <li class="rank-item" data-id="7">
+                  <span class="rank-num">07</span>
+                  <span class="rank-icon">🏆</span>
+                  <span class="rank-text">Ganar y conseguir buenos resultados en competición</span>
+                </li>
+                <li class="rank-item" data-id="8">
+                  <span class="rank-num">08</span>
+                  <span class="rank-icon">👨‍🏫</span>
+                  <span class="rank-text">Sentir que el entrenador se preocupa por el deportista como persona</span>
+                </li>
+                <li class="rank-item" data-id="9">
+                  <span class="rank-num">09</span>
+                  <span class="rank-icon">🤝</span>
+                  <span class="rank-text">Trabajo en equipo y sentido de pertenencia al club</span>
+                </li>
+                <li class="rank-item" data-id="10">
+                  <span class="rank-num">10</span>
+                  <span class="rank-icon">🌟</span>
+                  <span class="rank-text">Reconocimiento externo y valoración de la habilidad por otros</span>
+                </li>
+              </ol>
+            </div>
+
+            <!-- 2: Sport Participation Pathway Model SVG -->
+            <div class="viz-block reveal">
+              <p class="viz-title">Sport Participation Pathway Model — Côté (1999)</p>
+              <p class="viz-caption">
+                Trayectoria tipo en natación desde la iniciación hasta la élite. La transición entre
+                la fase de <strong style="color:var(--color-accent2,#ff6b35)">especialización y la inversión</strong>
+                (10–15 años) concentra el mayor riesgo de abandono definitivo.
+              </p>
+              <div class="pathway-wrap">
+                <svg id="pathway-svg" class="pathway-svg" viewBox="0 0 860 195"
+                     xmlns="http://www.w3.org/2000/svg" role="img"
+                     aria-label="Sport Participation Pathway Model: fases Muestreo (6-9), Técnica base (9-12), Especialización (12-15, zona crítica), Inversión (15-18), Élite (18+)">
+                  <!-- Critical zone background -->
+                  <rect x="320" y="8" width="162" height="178" rx="3" fill="rgba(255,107,53,0.07)"/>
+                  <line x1="320" y1="8" x2="320" y2="186" stroke="#ff6b35" stroke-width="1" stroke-dasharray="4,3" opacity="0.45"/>
+                  <line x1="482" y1="8" x2="482" y2="186" stroke="#ff6b35" stroke-width="1" stroke-dasharray="4,3" opacity="0.45"/>
+                  <!-- Timeline -->
+                  <path class="pathway-line" d="M50,100 L832,100" stroke="#1e2d45" stroke-width="2" fill="none"/>
+                  <polygon class="pathway-phase pd-5" points="832,94 844,100 832,106" fill="#1e2d45"/>
+                  <!-- Phase 1: Muestreo 6-9 -->
+                  <g class="pathway-phase pd-1">
+                    <text x="80" y="30" text-anchor="middle" fill="#00c5ff" font-family="'Barlow Condensed',sans-serif" font-size="11" font-weight="700" letter-spacing="2">MUESTREO</text>
+                    <text x="80" y="45" text-anchor="middle" fill="#6b7f9e" font-family="'Barlow',sans-serif" font-size="9">Fun · Multi-deporte</text>
+                    <circle cx="80" cy="100" r="7" fill="#0a0e1a" stroke="#00c5ff" stroke-width="2"/>
+                    <circle cx="80" cy="100" r="3" fill="#00c5ff"/>
+                    <text x="80" y="120" text-anchor="middle" fill="#e8f0fe" font-family="'Barlow Condensed',sans-serif" font-weight="700" font-size="13">6–9</text>
+                    <text x="80" y="136" text-anchor="middle" fill="#6b7f9e" font-family="'Barlow',sans-serif" font-size="9">años</text>
+                  </g>
+                  <!-- Phase 2: Técnica base 9-12 -->
+                  <g class="pathway-phase pd-2">
+                    <text x="240" y="30" text-anchor="middle" fill="#0095cc" font-family="'Barlow Condensed',sans-serif" font-size="11" font-weight="700" letter-spacing="2">TÉCNICA BASE</text>
+                    <text x="240" y="45" text-anchor="middle" fill="#6b7f9e" font-family="'Barlow',sans-serif" font-size="9">Habilidades fundament.</text>
+                    <circle cx="240" cy="100" r="7" fill="#0a0e1a" stroke="#0095cc" stroke-width="2"/>
+                    <circle cx="240" cy="100" r="3" fill="#0095cc"/>
+                    <text x="240" y="120" text-anchor="middle" fill="#e8f0fe" font-family="'Barlow Condensed',sans-serif" font-weight="700" font-size="13">9–12</text>
+                    <text x="240" y="136" text-anchor="middle" fill="#6b7f9e" font-family="'Barlow',sans-serif" font-size="9">años</text>
+                  </g>
+                  <!-- Phase 3: Especialización 12-15 CRITICAL -->
+                  <g class="pathway-phase pd-3">
+                    <text x="401" y="30" text-anchor="middle" fill="#ff6b35" font-family="'Barlow Condensed',sans-serif" font-size="11" font-weight="800" letter-spacing="2">ESPECIALIZ.</text>
+                    <text x="401" y="45" text-anchor="middle" fill="#ff6b35" font-family="'Barlow',sans-serif" font-size="9" opacity="0.85">⚠ Mayor riesgo abandono</text>
+                    <circle cx="401" cy="100" r="9" fill="#0a0e1a" stroke="#ff6b35" stroke-width="2.5"/>
+                    <circle cx="401" cy="100" r="4" fill="#ff6b35"/>
+                    <text x="401" y="120" text-anchor="middle" fill="#ff6b35" font-family="'Barlow Condensed',sans-serif" font-weight="800" font-size="13">12–15</text>
+                    <text x="401" y="136" text-anchor="middle" fill="#6b7f9e" font-family="'Barlow',sans-serif" font-size="9">años</text>
+                    <rect x="344" y="150" width="114" height="20" rx="3" fill="rgba(255,107,53,0.14)" stroke="rgba(255,107,53,0.4)" stroke-width="1"/>
+                    <text x="401" y="163" text-anchor="middle" fill="#ff6b35" font-family="'Barlow Condensed',sans-serif" font-size="9" font-weight="700" letter-spacing="1">PUNTO CRÍTICO</text>
+                  </g>
+                  <!-- Phase 4: Inversión 15-18 -->
+                  <g class="pathway-phase pd-4">
+                    <text x="562" y="30" text-anchor="middle" fill="#0095cc" font-family="'Barlow Condensed',sans-serif" font-size="11" font-weight="700" letter-spacing="2">INVERSIÓN</text>
+                    <text x="562" y="45" text-anchor="middle" fill="#6b7f9e" font-family="'Barlow',sans-serif" font-size="9">Práctica deliberada</text>
+                    <circle cx="562" cy="100" r="7" fill="#0a0e1a" stroke="#0095cc" stroke-width="2"/>
+                    <circle cx="562" cy="100" r="3" fill="#0095cc"/>
+                    <text x="562" y="120" text-anchor="middle" fill="#e8f0fe" font-family="'Barlow Condensed',sans-serif" font-weight="700" font-size="13">15–18</text>
+                    <text x="562" y="136" text-anchor="middle" fill="#6b7f9e" font-family="'Barlow',sans-serif" font-size="9">años</text>
+                  </g>
+                  <!-- Phase 5: Élite 18+ -->
+                  <g class="pathway-phase pd-5">
+                    <text x="720" y="30" text-anchor="middle" fill="#00c5ff" font-family="'Barlow Condensed',sans-serif" font-size="11" font-weight="700" letter-spacing="2">ÉLITE</text>
+                    <text x="720" y="45" text-anchor="middle" fill="#6b7f9e" font-family="'Barlow',sans-serif" font-size="9">Rendimiento máximo</text>
+                    <circle cx="720" cy="100" r="7" fill="#0a0e1a" stroke="#00c5ff" stroke-width="2"/>
+                    <circle cx="720" cy="100" r="3" fill="#00c5ff"/>
+                    <text x="720" y="120" text-anchor="middle" fill="#e8f0fe" font-family="'Barlow Condensed',sans-serif" font-weight="700" font-size="13">18+</text>
+                    <text x="720" y="136" text-anchor="middle" fill="#6b7f9e" font-family="'Barlow',sans-serif" font-size="9">años</text>
+                  </g>
+                </svg>
+              </div>
+            </div>
+
+            <!-- 3: Moulds 2023 motivational climate -->
+            <div class="viz-block reveal">
+              <p class="viz-title">Clima motivacional percibido — Moulds (2023)</p>
+              <p class="viz-caption">
+                Comparación entre nadadores que <strong style="color:#ff6b35">abandonaron</strong> y
+                <strong style="color:var(--color-deep)">continuadores</strong> en cuatro dimensiones del
+                clima motivacional. Escala Likert 1–5. Pasa el cursor sobre las barras para ver la
+                descripción de cada dimensión.
+              </p>
+              <div class="chart-wrap" style="height:300px;">
+                <canvas id="chart-moulds" aria-label="Gráfico de barras: clima motivacional dropout vs continuer"></canvas>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <section id="propuestas" class="article-section">
+          <div class="section-inner">
+            <span class="section-tag">05 · Propuestas</span>
+            <h2 class="section-title">Propuestas de mejora</h2>
+
+            <p class="body-text reveal">
+              Partiendo del marco de Meadows (1999) sobre puntos de apalancamiento en sistemas complejos,
+              las propuestas se organizan en cuatro niveles de profundidad de impacto. Actuar en los
+              niveles superiores produce cambios más duraderos, pero exige mayor voluntad institucional.
+            </p>
+
+            <!-- Staircase impact bar -->
+            <div class="lever-staircase-wrap reveal">
+              <div class="lever-staircase" role="img" aria-label="Jerarquía de impacto: Nivel 1 mayor impacto, Nivel 4 menor impacto">
+                <div class="lever-step ls-1">
+                  <span class="ls-label">Nivel 1</span>
+                  <span class="ls-sublabel">Paradigma</span>
+                </div>
+                <div class="lever-step ls-2">
+                  <span class="ls-label">Nivel 2</span>
+                  <span class="ls-sublabel">Estructura</span>
+                </div>
+                <div class="lever-step ls-3">
+                  <span class="ls-label">Nivel 3</span>
+                  <span class="ls-sublabel">Información</span>
+                </div>
+                <div class="lever-step ls-4">
+                  <span class="ls-label">Nivel 4</span>
+                </div>
+              </div>
+              <p class="ls-caption">↑ <strong>Mayor profundidad de impacto</strong> · Los niveles superiores cambian el sistema de raíz, no solo sus síntomas.</p>
+            </div>
+
+            <!-- Level 1: Paradigma -->
+            <div class="lever-group reveal" data-level="1">
+              <div class="lever-header lh-1">
+                <span class="lever-badge">Nivel 1</span>
+                <div>
+                  <h3 class="lever-title">Paradigma y visión sistémica</h3>
+                  <p class="lever-desc">El nivel de mayor impacto. Cambiar las creencias y valores que estructuran el sistema deportivo.</p>
+                </div>
+              </div>
+              <div class="accordion-card" data-acc>
+                <button class="accordion-header ah-1">
+                  <span class="acc-icon">🧭</span>
+                  <span class="acc-title">Redefinir el éxito en natación juvenil</span>
+                  <span class="acc-target at-fed">Federación</span>
+                  <span class="acc-chevron">▾</span>
+                </button>
+                <div class="accordion-body">
+                  <div class="accordion-body-inner">
+                    <p>Impulsar un cambio institucional en los criterios de éxito deportivo: priorizar la participación sostenida, el bienestar y el desarrollo integral por encima de los resultados en competición prematura. Implica reformar los sistemas de reconocimiento y premiación de clubes y entrenadores para alinearlos con indicadores de retención a largo plazo.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="accordion-card" data-acc>
+                <button class="accordion-header ah-1">
+                  <span class="acc-icon">🎓</span>
+                  <span class="acc-title">Formación en coaching centrado en el deportista</span>
+                  <span class="acc-target at-ent">Entrenador</span>
+                  <span class="acc-chevron">▾</span>
+                </button>
+                <div class="accordion-body">
+                  <div class="accordion-body-inner">
+                    <p>Integrar en los currículos de formación de entrenadores los fundamentos del coaching positivo, la teoría de autodeterminación y el desarrollo a largo plazo del deportista (LTAD). Pasar de un modelo centrado en el rendimiento a uno centrado en la persona, donde el disfrute y la motivación autónoma son criterios de calidad del entrenamiento.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Level 2: Estructura y reglas -->
+            <div class="lever-group reveal" data-level="2">
+              <div class="lever-header lh-2">
+                <span class="lever-badge">Nivel 2</span>
+                <div>
+                  <h3 class="lever-title">Estructura y reglas del sistema</h3>
+                  <p class="lever-desc">Reglas, incentivos y estructura organizativa que configuran los comportamientos posibles dentro del sistema.</p>
+                </div>
+              </div>
+              <div class="accordion-card" data-acc>
+                <button class="accordion-header ah-2">
+                  <span class="acc-icon">📅</span>
+                  <span class="acc-title">Reforma del calendario competitivo juvenil</span>
+                  <span class="acc-target at-fed">Federación</span>
+                  <span class="acc-chevron">▾</span>
+                </button>
+                <div class="accordion-body">
+                  <div class="accordion-body-inner">
+                    <p>Reducir la densidad competitiva en las categorías de iniciación (10–14 años). Diseñar un modelo de competición por etapas que priorice el aprendizaje y el disfrute en las primeras fases e incremente progresivamente la exigencia competitiva con la edad, en coherencia con el Sport Participation Pathway Model de Côté (1999).</p>
+                  </div>
+                </div>
+              </div>
+              <div class="accordion-card" data-acc>
+                <button class="accordion-header ah-2">
+                  <span class="acc-icon">⏳</span>
+                  <span class="acc-title">Política de especialización tardía</span>
+                  <span class="acc-target at-club">Club</span>
+                  <span class="acc-chevron">▾</span>
+                </button>
+                <div class="accordion-body">
+                  <div class="accordion-body-inner">
+                    <p>Establecer directrices de club que desincentiven la especialización temprana antes de los 14 años. Promover la práctica multimodal y el muestreo deportivo durante las etapas de iniciación, reduciendo la presión por el rendimiento en edades en las que el factor protector más robusto frente al abandono es el disfrute percibido.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Level 3: Flujos de información -->
+            <div class="lever-group reveal" data-level="3">
+              <div class="lever-header lh-3">
+                <span class="lever-badge">Nivel 3</span>
+                <div>
+                  <h3 class="lever-title">Flujos de información y retroalimentación</h3>
+                  <p class="lever-desc">Quién recibe qué información y cuándo. Mejorar los flujos produce mejores decisiones sin cambiar las reglas.</p>
+                </div>
+              </div>
+              <div class="accordion-card" data-acc>
+                <button class="accordion-header ah-3">
+                  <span class="acc-icon">📊</span>
+                  <span class="acc-title">Sistema de alerta temprana del abandono</span>
+                  <span class="acc-target at-club">Club</span>
+                  <span class="acc-chevron">▾</span>
+                </button>
+                <div class="accordion-body">
+                  <div class="accordion-body-inner">
+                    <p>Implementar un protocolo sistemático de seguimiento del bienestar y la motivación de los nadadores. Identificar señales de riesgo —descenso de asistencia, cambios de actitud, verbalización de deseo de abandonar— y activar intervenciones preventivas antes de que la decisión de dejarlo sea irreversible.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="accordion-card" data-acc>
+                <button class="accordion-header ah-3">
+                  <span class="acc-icon">💬</span>
+                  <span class="acc-title">Encuestas periódicas de satisfacción y motivación</span>
+                  <span class="acc-target at-ent">Entrenador</span>
+                  <span class="acc-chevron">▾</span>
+                </button>
+                <div class="accordion-body">
+                  <div class="accordion-body-inner">
+                    <p>Medir regularmente —al menos dos veces por temporada— el nivel de disfrute, la motivación percibida y el clima motivacional del grupo. Usar instrumentos validados como el SMS (Sport Motivation Scale) o el PMCSQ (Perceived Motivational Climate in Sport Questionnaire) adaptados a la edad del nadador, y compartir los resultados con el club.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Level 4: Parámetros -->
+            <div class="lever-group reveal" data-level="4">
+              <div class="lever-header lh-4">
+                <span class="lever-badge">Nivel 4</span>
+                <div>
+                  <h3 class="lever-title">Parámetros y ajuste de variables</h3>
+                  <p class="lever-desc">El nivel de menor impacto sistémico pero más inmediato. Cambios directos sobre cargas y metodología que el entrenador puede aplicar hoy.</p>
+                </div>
+              </div>
+              <div class="accordion-card" data-acc>
+                <button class="accordion-header ah-4">
+                  <span class="acc-icon">🏋️</span>
+                  <span class="acc-title">Ajuste del volumen de entrenamiento por maduración</span>
+                  <span class="acc-target at-ent">Entrenador</span>
+                  <span class="acc-chevron">▾</span>
+                </button>
+                <div class="accordion-body">
+                  <div class="accordion-body-inner">
+                    <p>Adaptar la carga de entrenamiento a la maduración biológica del deportista, no solo a la edad cronológica. Evitar el sobreentrenamiento en fases críticas de crecimiento, que es uno de los factores de burnout más documentados en la natación juvenil y precede con frecuencia al abandono definitivo.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="accordion-card" data-acc>
+                <button class="accordion-header ah-4">
+                  <span class="acc-icon">🎮</span>
+                  <span class="acc-title">Variedad metodológica en las sesiones</span>
+                  <span class="acc-target at-ent">Entrenador</span>
+                  <span class="acc-chevron">▾</span>
+                </button>
+                <div class="accordion-body">
+                  <div class="accordion-body-inner">
+                    <p>Incorporar de forma sistemática elementos lúdicos, retos grupales y actividades variadas en las sesiones de entrenamiento. La monotonía percibida es citada de forma consistente como factor de abandono en estudios de natación juvenil. El cambio no requiere modificar los objetivos técnicos, solo diversificar el envoltorio metodológico.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <section id="conclusiones" class="article-section">
+          <div class="section-inner">
+            <span class="section-tag">06 · Conclusiones</span>
+            <h2 class="section-title">Conclusiones</h2>
+            <p class="placeholder-text">[Placeholder: Síntesis de los principales hallazgos y recomendaciones para entrenadores, clubes y federaciones.]</p>
+            <p class="placeholder-text">[Placeholder: Líneas futuras de investigación y reflexión final.]</p>
+          </div>
+        </section>
+
+      </article>
+    </main>
+
+  </div><!-- /.layout -->
+
+  <script>
+    (function () {
+      const toggle   = document.querySelector('.nav-toggle');
+      const sidebar  = document.getElementById('sidebar');
+      const backdrop = document.getElementById('sidebar-backdrop');
+
+      function openSidebar() {
+        sidebar.classList.add('open');
+        backdrop.classList.add('visible');
+        toggle.setAttribute('aria-expanded', 'true');
+      }
+      function closeSidebar() {
+        sidebar.classList.remove('open');
+        backdrop.classList.remove('visible');
+        toggle.setAttribute('aria-expanded', 'false');
+      }
+
+      toggle.addEventListener('click', function () {
+        sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
+      });
+
+      backdrop.addEventListener('click', closeSidebar);
+
+      sidebar.querySelectorAll('.nav-link').forEach(function (link) {
+        link.addEventListener('click', function () {
+          if (window.innerWidth < 768) closeSidebar();
+        });
+      });
+
+      // IntersectionObserver — active nav highlight
+      var navLinks = document.querySelectorAll('.nav-link');
+      var sections = document.querySelectorAll('.article-section');
+
+      var linkMap = {};
+      navLinks.forEach(function (link) {
+        var id = link.getAttribute('href').slice(1);
+        linkMap[id] = link;
+      });
+
+      var observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            navLinks.forEach(function (l) { l.classList.remove('active'); });
+            var active = linkMap[entry.target.id];
+            if (active) active.classList.add('active');
+          }
+        });
+      }, {
+        rootMargin: '-20% 0px -70% 0px',
+        threshold: 0
+      });
+
+      sections.forEach(function (sec) { observer.observe(sec); });
+
+      // ── Type filter ──────────────────────────────────────────
+      var typeButtons = document.querySelectorAll('.type-btn');
+      var defCards    = document.querySelectorAll('.def-card');
+
+      typeButtons.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var filter = btn.dataset.filter;
+
+          typeButtons.forEach(function (b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+
+          defCards.forEach(function (card) {
+            if (filter === 'all' || card.dataset.type === filter) {
+              card.classList.remove('dimmed');
+            } else {
+              card.classList.add('dimmed');
+            }
+          });
+        });
+      });
+
+      // ── Scroll reveal ────────────────────────────────────────
+      var revealEls = document.querySelectorAll('.reveal');
+      var revealObserver = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('revealed');
+            revealObserver.unobserve(entry.target);
+          }
+        });
+      }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+
+      revealEls.forEach(function (el) { revealObserver.observe(el); });
+
+      // ── Chart.js: bar chart ──────────────────────────────────
+      var chartsInit = {};
+
+      function buildBarChart() {
+        if (chartsInit.bar) return;
+        chartsInit.bar = true;
+        new Chart(document.getElementById('chart-barras'), {
+          type: 'bar',
+          data: {
+            labels: ['Natación', 'Gimnasia', 'Atletismo', 'Fútbol sala', 'Baloncesto'],
+            datasets: [{
+              label: '% de abandono',
+              data: [75, 62, 55, 44, 38],
+              backgroundColor: ['#00c5ff', '#1a3a5c', '#1a3a5c', '#1a3a5c', '#1a3a5c'],
+              hoverBackgroundColor: ['#33d4ff', '#1e4a72', '#1e4a72', '#1e4a72', '#1e4a72'],
+              borderRadius: 6,
+              borderSkipped: false
+            }]
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 900, easing: 'easeOutQuart' },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: '#111827',
+                titleFont: { family: "'Barlow Condensed', sans-serif", size: 13 },
+                bodyFont:  { family: "'Barlow', sans-serif", size: 12 },
+                callbacks: { label: function (ctx) { return '  ' + ctx.raw + '% de abandono'; } }
+              }
+            },
+            scales: {
+              x: {
+                min: 0, max: 100,
+                ticks: {
+                  callback: function (v) { return v + '%'; },
+                  font: { family: "'Barlow', sans-serif", size: 11 },
+                  color: '#6b7f9e'
+                },
+                grid: { color: 'rgba(30,45,69,0.8)' }
+              },
+              y: {
+                ticks: { font: { family: "'Barlow Condensed', sans-serif", size: 13, weight: '600' }, color: '#e8f0fe' },
+                grid: { display: false }
+              }
+            }
+          }
+        });
+      }
+
+      // ── Chart.js: line chart ─────────────────────────────────
+      function buildLineChart() {
+        if (chartsInit.line) return;
+        chartsInit.line = true;
+        new Chart(document.getElementById('chart-linea'), {
+          type: 'line',
+          data: {
+            labels: ['6','7','8','9','10','11','12','13','14','15','16','17','18'],
+            datasets: [{
+              label: 'Participantes (miles)',
+              data: [7.2, 11.5, 17.8, 23.4, 28.1, 21.6, 14.9, 10.2, 7.4, 5.1, 3.6, 2.7, 2.1],
+              borderColor: '#00c5ff',
+              backgroundColor: 'rgba(0,197,255,0.07)',
+              fill: true,
+              tension: 0.42,
+              pointRadius:          [4, 4, 4, 4, 8, 8, 4, 4, 4, 4, 4, 4, 4],
+              pointBackgroundColor: [
+                '#6b7f9e','#6b7f9e','#6b7f9e','#6b7f9e',
+                '#00c5ff','#ff6b35',
+                '#6b7f9e','#6b7f9e','#6b7f9e','#6b7f9e','#6b7f9e','#6b7f9e','#6b7f9e'
+              ],
+              pointBorderColor: '#0a0e1a',
+              pointBorderWidth: 2,
+              pointHoverRadius: 9
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 1100, easing: 'easeOutQuart' },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: '#111827',
+                titleFont: { family: "'Barlow Condensed', sans-serif", size: 13 },
+                bodyFont:  { family: "'Barlow', sans-serif", size: 12 },
+                callbacks: {
+                  title: function (items) { return 'Edad: ' + items[0].label + ' años'; },
+                  label: function (ctx) { return '  ' + ctx.raw + 'k participantes'; }
+                }
+              }
+            },
+            scales: {
+              x: {
+                title: { display: true, text: 'Edad (años)', font: { family: "'Barlow', sans-serif", size: 11 }, color: '#6b7f9e' },
+                ticks: { font: { family: "'Barlow', sans-serif", size: 11 }, color: '#6b7f9e' },
+                grid: { color: 'rgba(30,45,69,0.8)' }
+              },
+              y: {
+                title: { display: true, text: 'Participantes (miles)', font: { family: "'Barlow', sans-serif", size: 11 }, color: '#6b7f9e' },
+                ticks: { font: { family: "'Barlow', sans-serif", size: 11 }, color: '#6b7f9e' },
+                grid: { color: 'rgba(30,45,69,0.8)' }
+              }
+            }
+          }
+        });
+      }
+
+      // Lazy-init charts when their canvas enters the viewport
+      var chartObserver = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) return;
+          if (entry.target.id === 'chart-barras') buildBarChart();
+          if (entry.target.id === 'chart-linea')  buildLineChart();
+          chartObserver.unobserve(entry.target);
+        });
+      }, { threshold: 0.15 });
+
+      chartObserver.observe(document.getElementById('chart-barras'));
+      chartObserver.observe(document.getElementById('chart-linea'));
+
+      // ── Animated metric counters ─────────────────────────────
+      function animateCounter(el) {
+        var target = parseInt(el.dataset.target, 10);
+        var duration = 1400;
+        var startTs = null;
+        function step(ts) {
+          if (!startTs) startTs = ts;
+          var progress = Math.min((ts - startTs) / duration, 1);
+          var ease = 1 - Math.pow(1 - progress, 3);
+          el.textContent = Math.round(ease * target);
+          if (progress < 1) requestAnimationFrame(step);
+          else el.textContent = target;
+        }
+        requestAnimationFrame(step);
+      }
+
+      var counterObserver = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            animateCounter(entry.target);
+            counterObserver.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.6 });
+
+      document.querySelectorAll('.metric-num').forEach(function (el) {
+        counterObserver.observe(el);
+      });
+
+      // ── Accordion toggle ─────────────────────────────────────
+      document.querySelectorAll('[data-acc]').forEach(function (card) {
+        var btn = card.querySelector('.accordion-header');
+        btn.addEventListener('click', function () {
+          card.classList.toggle('open');
+        });
+      });
+
+      // ── Pathway SVG animation ────────────────────────────────
+      var pathwaySvg = document.getElementById('pathway-svg');
+      if (pathwaySvg) {
+        var pathwayObserver = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('pathway-animate');
+              pathwayObserver.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.3 });
+        pathwayObserver.observe(pathwaySvg);
+      }
+
+      // ── Moulds 2023 chart ────────────────────────────────────
+      var MOULDS_TIPS = {
+        'Clima tarea':  'El entrenador prioriza el aprendizaje, la mejora personal y el esfuerzo como criterios de éxito.',
+        'Autonomía':    'El deportista percibe que tiene voz en las decisiones del entrenamiento y la competición.',
+        'Clima ego':    'El entrenador valora la victoria y la comparación social por encima de la mejora individual.',
+        'Control':      'El entrenador usa presión, castigos o recompensas externas como principal herramienta motivacional.'
+      };
+
+      function buildMouldsChart() {
+        if (chartsInit.moulds) return;
+        chartsInit.moulds = true;
+        new Chart(document.getElementById('chart-moulds'), {
+          type: 'bar',
+          data: {
+            labels: ['Clima tarea', 'Autonomía', 'Clima ego', 'Control'],
+            datasets: [
+              {
+                label: 'Abandonó',
+                data: [3.2, 2.8, 3.7, 3.5],
+                backgroundColor: 'rgba(255,107,53,0.70)',
+                hoverBackgroundColor: '#ff6b35',
+                borderRadius: 4,
+                borderSkipped: false
+              },
+              {
+                label: 'Continuó',
+                data: [4.1, 3.9, 2.8, 2.4],
+                backgroundColor: 'rgba(0,197,255,0.60)',
+                hoverBackgroundColor: '#00c5ff',
+                borderRadius: 4,
+                borderSkipped: false
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 1000, easing: 'easeOutQuart' },
+            plugins: {
+              legend: {
+                display: true,
+                labels: {
+                  color: '#e8f0fe',
+                  font: { family: "'Barlow Condensed', sans-serif", size: 13, weight: '700' },
+                  boxWidth: 12, boxHeight: 12, padding: 20
+                }
+              },
+              tooltip: {
+                backgroundColor: '#111827',
+                borderColor: '#1e2d45',
+                borderWidth: 1,
+                titleFont: { family: "'Barlow Condensed', sans-serif", size: 14, weight: '700' },
+                bodyFont:  { family: "'Barlow', sans-serif", size: 12 },
+                padding: 12,
+                callbacks: {
+                  title: function (items) { return items[0].label.toUpperCase(); },
+                  beforeBody: function (items) {
+                    return MOULDS_TIPS[items[0].label] || '';
+                  },
+                  label: function (ctx) {
+                    var prefix = ctx.dataset.label === 'Abandonó' ? '  Abandono:  ' : '  Continuó:   ';
+                    return prefix + ctx.raw.toFixed(1) + ' / 5';
+                  }
+                }
+              }
+            },
+            scales: {
+              x: {
+                ticks: { font: { family: "'Barlow Condensed', sans-serif", size: 13, weight: '600' }, color: '#e8f0fe' },
+                grid: { color: 'rgba(30,45,69,0.8)' }
+              },
+              y: {
+                min: 1, max: 5,
+                ticks: {
+                  font: { family: "'Barlow', sans-serif", size: 11 },
+                  color: '#6b7f9e',
+                  callback: function (v) { return v.toFixed(1); }
+                },
+                grid: { color: 'rgba(30,45,69,0.8)' }
+              }
+            }
+          }
+        });
+      }
+
+      var mouldsObs = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) { buildMouldsChart(); mouldsObs.unobserve(entry.target); }
+        });
+      }, { threshold: 0.15 });
+      var mouldsCanvas = document.getElementById('chart-moulds');
+      if (mouldsCanvas) mouldsObs.observe(mouldsCanvas);
+    })();
+  </script>
+
+</body>
+</html>
